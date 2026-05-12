@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>Telegram Link Converter · t.me Transformer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: linear-gradient(145deg, #0f172a 0%, #111827 100%);
+            font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+            min-height: 100vh;
+            padding: 2rem 1.5rem;
+            color: #e2e8f0;
+        }
+
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+        }
+
+        /* header */
+        .header {
+            text-align: center;
+            margin-bottom: 2.5rem;
+        }
+
+        .badge {
+            display: inline-block;
+            background: rgba(59, 130, 246, 0.2);
+            backdrop-filter: blur(4px);
+            padding: 0.3rem 1rem;
+            border-radius: 40px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            letter-spacing: 0.3px;
+            color: #60a5fa;
+            border: 1px solid rgba(59, 130, 246, 0.4);
+            margin-bottom: 1rem;
+        }
+
+        h1 {
+            font-size: 2.4rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #f0f9ff, #7aa2f7);
+            background-clip: text;
+            -webkit-background-clip: text;
+            color: transparent;
+            letter-spacing: -0.3px;
+        }
+
+        .sub {
+            color: #94a3b8;
+            margin-top: 0.6rem;
+            font-size: 1rem;
+        }
+
+        /* card style */
+        .card {
+            background: rgba(30, 41, 59, 0.65);
+            backdrop-filter: blur(12px);
+            border-radius: 2rem;
+            border: 1px solid rgba(71, 85, 105, 0.5);
+            box-shadow: 0 20px 35px -12px rgba(0, 0, 0, 0.4);
+            padding: 1.8rem;
+            margin-bottom: 2rem;
+            transition: all 0.2s;
+        }
+
+        .input-area {
+            margin-bottom: 1.5rem;
+        }
+
+        label {
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 10px;
+            font-size: 0.9rem;
+            color: #cbd5e6;
+        }
+
+        textarea {
+            width: 100%;
+            background: #0f172a;
+            border: 1px solid #334155;
+            border-radius: 1.2rem;
+            padding: 1rem 1.2rem;
+            font-family: 'Monaco', 'Menlo', 'Fira Code', monospace;
+            font-size: 0.9rem;
+            color: #e2e8f0;
+            resize: vertical;
+            transition: 0.2s;
+            line-height: 1.5;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
+        }
+
+        .btn-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin: 1.5rem 0 1rem;
+        }
+
+        button {
+            background: #1e293b;
+            border: none;
+            padding: 0.7rem 1.5rem;
+            border-radius: 2rem;
+            font-weight: 600;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: #e2e8f0;
+            border: 1px solid #334155;
+        }
+
+        button i {
+            font-style: normal;
+            font-weight: 500;
+        }
+
+        .btn-primary {
+            background: #2563eb;
+            border-color: #3b82f6;
+            color: white;
+            box-shadow: 0 4px 8px rgba(37, 99, 235, 0.2);
+        }
+
+        .btn-primary:hover {
+            background: #1d4ed8;
+            transform: translateY(-1px);
+            box-shadow: 0 8px 16px rgba(37, 99, 235, 0.3);
+        }
+
+        .btn-outline {
+            background: transparent;
+            border-color: #3b82f6;
+            color: #60a5fa;
+        }
+
+        .btn-outline:hover {
+            background: rgba(59, 130, 246, 0.15);
+            border-color: #60a5fa;
+        }
+
+        button:hover {
+            transform: translateY(-1px);
+        }
+
+        button:active {
+            transform: translateY(1px);
+        }
+
+        /* result list */
+        .results-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            flex-wrap: wrap;
+            margin-bottom: 1.2rem;
+            border-bottom: 1px dashed #334155;
+            padding-bottom: 0.6rem;
+        }
+
+        .results-header h3 {
+            font-weight: 600;
+            font-size: 1.2rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .counter {
+            background: #0f172a;
+            padding: 0.2rem 0.7rem;
+            border-radius: 40px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            color: #94a3b8;
+        }
+
+        .link-list {
+            list-style: none;
+            margin-top: 0.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            max-height: 450px;
+            overflow-y: auto;
+            padding-right: 0.3rem;
+        }
+
+        .link-item {
+            background: rgba(15, 23, 42, 0.7);
+            border-radius: 1.2rem;
+            padding: 0.9rem 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 12px;
+            border: 1px solid #2d3a5e;
+            transition: all 0.15s;
+        }
+
+        .link-item:hover {
+            background: #0f172a;
+            border-color: #3b82f6;
+        }
+
+        .link-url {
+            font-family: 'SF Mono', 'Fira Code', monospace;
+            font-size: 0.8rem;
+            word-break: break-all;
+            flex: 1;
+            color: #b9c7db;
+        }
+
+        .copy-btn {
+            background: #2d3a5e;
+            border: none;
+            padding: 0.45rem 1rem;
+            border-radius: 2rem;
+            font-size: 0.7rem;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            cursor: pointer;
+            transition: 0.1s;
+            color: white;
+            white-space: nowrap;
+        }
+
+        .copy-btn:hover {
+            background: #3b82f6;
+            transform: scale(0.97);
+        }
+
+        .copy-all {
+            background: #10b981;
+            border-color: #34d399;
+            color: white;
+            margin-left: auto;
+        }
+
+        .copy-all:hover {
+            background: #059669;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 2rem;
+            color: #64748b;
+            font-size: 0.9rem;
+        }
+
+        .status-toast {
+            position: fixed;
+            bottom: 25px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #1e293bdd;
+            backdrop-filter: blur(16px);
+            border: 1px solid #3b82f6;
+            padding: 0.6rem 1.4rem;
+            border-radius: 40px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: #bbf0ff;
+            z-index: 1000;
+            pointer-events: none;
+            transition: 0.2s;
+            opacity: 0;
+        }
+
+        .footer {
+            text-align: center;
+            font-size: 0.75rem;
+            color: #475569;
+            margin-top: 2rem;
+        }
+
+        @media (max-width: 640px) {
+            body {
+                padding: 1rem;
+            }
+            .card {
+                padding: 1.2rem;
+            }
+            h1 {
+                font-size: 1.8rem;
+            }
+            .link-item {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            .copy-btn {
+                align-self: flex-end;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header">
+        <div class="badge">⚡ TELEGRAM LINK NORMALIZER</div>
+        <h1>🔗 t.me Converter</h1>
+        <div class="sub">Convert telegram.me & t.me links → unified t.me format · One-click copy</div>
+    </div>
+
+    <div class="card">
+        <div class="input-area">
+            <label>📝 Paste your links (any format, separated by space / newline)</label>
+            <textarea id="rawLinksInput" rows="5" placeholder="Example:&#10;https://telegram.me/NightLifeXRobot?start=abc123&#10;https://t.me/exampleBot?start=xyz&#10;telegram.me/joinchat/abc123&#10;t.me/username"></textarea>
+        </div>
+        <div class="btn-group">
+            <button id="convertBtn" class="btn-primary">✨ Convert & Extract All Links</button>
+            <button id="clearBtn" class="btn-outline">🗑️ Clear All</button>
+            <button id="copyAllLinksBtn" class="copy-all">📋 Copy All Converted Links</button>
+        </div>
+        <p style="font-size: 0.7rem; color: #5b6e8c; margin-top: 0.2rem;">🔍 automatically detects telegram.me / t.me URLs, normalizes to t.me, preserves query parameters and paths.</p>
+    </div>
+
+    <!-- Results area -->
+    <div class="card" style="padding: 1.5rem;">
+        <div class="results-header">
+            <h3>🔗 Converted Links <span>(t.me format)</span></h3>
+            <span class="counter" id="linkCounter">0 links</span>
+        </div>
+        <div id="linksContainer">
+            <div class="empty-state">⚡ No links yet — paste raw text and click "Convert & Extract"</div>
+        </div>
+    </div>
+    <div class="footer">
+        🧩 Automatically transforms telegram.me → t.me · each link gets a dedicated copy button
+    </div>
+</div>
+
+<div id="toastMessage" class="status-toast">✅ Copied!</div>
+
+<script>
+    (function() {
+        // ---------- DOM Elements ----------
+        const textarea = document.getElementById('rawLinksInput');
+        const convertBtn = document.getElementById('convertBtn');
+        const clearBtn = document.getElementById('clearBtn');
+        const copyAllBtn = document.getElementById('copyAllLinksBtn');
+        const linksContainer = document.getElementById('linksContainer');
+        const linkCounterSpan = document.getElementById('linkCounter');
+
+        let currentConvertedLinks = [];   // store normalized t.me links (strings)
+
+        // ---------- Helper: Show toast ----------
+        let toastTimeout = null;
+        function showToast(message, isError = false) {
+            const toast = document.getElementById('toastMessage');
+            toast.textContent = message || (isError ? '⚠️ Failed' : '✅ Copied!');
+            toast.style.backgroundColor = isError ? '#991b1bdd' : '#1e293bdd';
+            toast.style.borderColor = isError ? '#ef4444' : '#10b981';
+            toast.style.opacity = '1';
+            if (toastTimeout) clearTimeout(toastTimeout);
+            toastTimeout = setTimeout(() => {
+                toast.style.opacity = '0';
+            }, 2000);
+        }
+
+        // ---------- Core: convert telegram.me -> t.me, keep t.me as is, extract all links from text ----------
+        function normalizeTelegramLink(urlString) {
+            // trim whitespace
+            let raw = urlString.trim();
+            if (!raw) return null;
+
+            // We accept both http://, https://, or protocol-relative, or even without scheme (but we'll prepend https if missing)
+            // Actually robust: if doesn't start with http, we consider maybe it's a raw "telegram.me/..." or "t.me/..."
+            let hasProtocol = raw.startsWith('http://') || raw.startsWith('https://');
+            let finalUrl = raw;
+            if (!hasProtocol) {
+                // assume it's meant to be a link (telegram.me/... or t.me/...)
+                if (raw.startsWith('telegram.me/') || raw.startsWith('t.me/')) {
+                    finalUrl = 'https://' + raw;
+                } else {
+                    // not matching typical telegram pattern? maybe a partial / weird, skip but try regex later anyway.
+                    // we'll still attempt to detect if domain exists in string later? but for safety
+                    return null;
+                }
+            }
+
+            try {
+                // parse URL to extract host and path+search
+                const urlObj = new URL(finalUrl);
+                let hostname = urlObj.hostname;
+
+                // normalize host: telegram.me OR www.telegram.me or t.me -> convert to "t.me"
+                if (hostname === 'telegram.me' || hostname === 'www.telegram.me' || hostname === 't.me' || hostname === 'www.t.me') {
+                    // target host: t.me
+                    const newHost = 't.me';
+                    const newUrl = new URL(finalUrl);
+                    newUrl.hostname = newHost;
+                    // keep everything else: pathname, search, hash
+                    return newUrl.toString();
+                } else {
+                    // if host doesn't match any telegram domain, but still maybe user included something else
+                    // we only process links that contain telegram domain pattern, else return null (ignore)
+                    if (hostname.includes('telegram') || hostname.includes('t.me')) {
+                        // in case it's other subdomain like api.telegram? but we standardize anyway
+                        const newUrl = new URL(finalUrl);
+                        newUrl.hostname = 't.me';
+                        return newUrl.toString();
+                    }
+                    return null;
+                }
+            } catch (e) {
+                // URL parsing failed: maybe it's a raw string containing telegram.me without schema? fallback regex approach
+                // second chance: use regex to extract pattern and rebuild.
+                const regexPattern = /(?:https?:\/\/)?(?:www\.)?(telegram\.me|t\.me)(\/[^\s]*)/i;
+                const match = raw.match(regexPattern);
+                if (match) {
+                    const pathPlusQuery = match[2]; // includes leading slash and everything after
+                    return `https://t.me${pathPlusQuery}`;
+                }
+                return null;
+            }
+        }
+
+        // Extract ALL valid telegram links from a given text, normalize each to t.me
+        function extractAndConvertAllLinks(inputText) {
+            if (!inputText || typeof inputText !== 'string') return [];
+
+            // Regex explanation: match any URL-like containing telegram.me or t.me.
+            // We need to capture from http:// or https:// or optionally without protocol, but also standalone.
+            // More robust: find all substrings that look like telegram links (loose)
+            // Pattern: optional http(s):// , optional www. , domain (telegram.me OR t.me) , then any non-space characters (path, query)
+            const linkRegex = /(?:https?:\/\/)?(?:www\.)?(telegram\.me|t\.me)(\/[^\s<>"']*)/gi;
+            let matches = [];
+            let match;
+            while ((match = linkRegex.exec(inputText)) !== null) {
+                let fullMatch = match[0];
+                // check if protocol missing, add https
+                if (!fullMatch.startsWith('http')) {
+                    fullMatch = 'https://' + fullMatch;
+                }
+                matches.push(fullMatch);
+            }
+
+            // also handle edge cases: sometimes text might have "telegram.me/xxx?start=..." without any space boundary, but regex works.
+
+            // Remove duplicates by Set? But preserve order? ok minimal
+            const uniqueRaw = [];
+            const seen = new Set();
+            for (let rawLink of matches) {
+                if (!seen.has(rawLink)) {
+                    seen.add(rawLink);
+                    uniqueRaw.push(rawLink);
+                }
+            }
+
+            // Normalize each unique raw link
+            const normalized = [];
+            for (let rawLink of uniqueRaw) {
+                const converted = normalizeTelegramLink(rawLink);
+                if (converted && converted.trim().length > 0) {
+                    normalized.push(converted);
+                }
+            }
+            // final deduplicate after conversion (maybe two different raw produce same t.me)
+            const finalUnique = [];
+            const finalSet = new Set();
+            for (let link of normalized) {
+                if (!finalSet.has(link)) {
+                    finalSet.add(link);
+                    finalUnique.push(link);
+                }
+            }
+            return finalUnique;
+        }
+
+        // ---------- Render links in UI with individual copy button ----------
+        function renderLinks(linksArray) {
+            linksContainer.innerHTML = '';
+            if (!linksArray || linksArray.length === 0) {
+                linksContainer.innerHTML = '<div class="empty-state">✨ No Telegram links found — try pasting some!<br>Example: https://telegram.me/NightLifeXRobot?start=abc123</div>';
+                linkCounterSpan.innerText = `0 links`;
+                return;
+            }
+
+            const list = document.createElement('ul');
+            list.className = 'link-list';
+            linksArray.forEach((link, idx) => {
+                const listItem = document.createElement('li');
+                listItem.className = 'link-item';
+
+                const linkSpan = document.createElement('span');
+                linkSpan.className = 'link-url';
+                linkSpan.textContent = link;
+                // optional title
+                linkSpan.title = link;
+
+                const copyBtn = document.createElement('button');
+                copyBtn.className = 'copy-btn';
+                copyBtn.innerHTML = '📋 Copy';
+                copyBtn.setAttribute('data-link', link);
+                copyBtn.setAttribute('data-idx', idx);
+                copyBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    copyToClipboard(link);
+                    showToast(`✅ Copied: ${link.length > 60 ? link.substring(0, 57) + '...' : link}`);
+                });
+
+                listItem.appendChild(linkSpan);
+                listItem.appendChild(copyBtn);
+                list.appendChild(listItem);
+            });
+            linksContainer.appendChild(list);
+            linkCounterSpan.innerText = `${linksArray.length} link${linksArray.length !== 1 ? 's' : ''}`;
+        }
+
+        // ---------- Clipboard API with fallback ----------
+        async function copyToClipboard(text) {
+            if (!text) return false;
+            try {
+                await navigator.clipboard.writeText(text);
+                return true;
+            } catch (err) {
+                // fallback for older browsers
+                const textareaFallback = document.createElement('textarea');
+                textareaFallback.value = text;
+                document.body.appendChild(textareaFallback);
+                textareaFallback.select();
+                document.execCommand('copy');
+                document.body.removeChild(textareaFallback);
+                return true;
+            }
+        }
+
+        // ---------- Copy all converted links to clipboard (one per line) ----------
+        async function copyAllConverted() {
+            if (!currentConvertedLinks.length) {
+                showToast('⚠️ No links to copy', true);
+                return;
+            }
+            const allLinksText = currentConvertedLinks.join('\n');
+            const success = await copyToClipboard(allLinksText);
+            if (success) {
+                showToast(`📋 Copied ${currentConvertedLinks.length} link(s) to clipboard`);
+            } else {
+                showToast('❌ Copy failed', true);
+            }
+        }
+
+        // ---------- Main conversion from textarea ----------
+        function processConversion() {
+            const rawText = textarea.value;
+            if (!rawText.trim()) {
+                // show empty state and clear current links
+                currentConvertedLinks = [];
+                renderLinks([]);
+                showToast('📭 No text to process', false);
+                return;
+            }
+            const links = extractAndConvertAllLinks(rawText);
+            if (links.length === 0) {
+                currentConvertedLinks = [];
+                renderLinks([]);
+                showToast('🔍 No valid Telegram links found (telegram.me or t.me)', true);
+            } else {
+                currentConvertedLinks = links;
+                renderLinks(currentConvertedLinks);
+                showToast(`✨ Converted & extracted ${links.length} link(s)`);
+            }
+        }
+
+        // ---------- Clear everything: textarea, results, stored links ----------
+        function clearEverything() {
+            textarea.value = '';
+            currentConvertedLinks = [];
+            renderLinks([]);
+            showToast('🧹 Cleared all fields', false);
+            // optional focus
+            textarea.focus();
+        }
+
+        // bonus: intelligent demo preset from the user's given example (first few nightclub links but generic)
+        function loadDemoExample() {
+            // provide useful example similar to the style shown in prompt (many telegram.me links)
+            const demoText = `🖇️ Here Is Your Link
+https://telegram.me/NightLifeXRobot?start=Z2V0LTM1ODM5NzI5Mjc1OTU3NzU
+⚡️Powered By Night Club
+https://telegram.me/NightLifeXRobot?start=Z2V0LTM1NzU5NTI4NDgzMTcyMzktMzU4Mjk3MDQxNzY4NTk1OA
+https://t.me/joinchat/abc123?start=something
+telegram.me/durov?start=test
+Also mix t.me/exampleBot?start=xyz`;
+            textarea.value = demoText;
+            processConversion();
+        }
+
+        // add event listeners & initialize optional placeholder
+        function bindEvents() {
+            convertBtn.addEventListener('click', processConversion);
+            clearBtn.addEventListener('click', clearEverything);
+            copyAllBtn.addEventListener('click', copyAllConverted);
+            // optional keyboard shortcut: Ctrl+Enter in textarea to convert
+            textarea.addEventListener('keydown', (e) => {
+                if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                    e.preventDefault();
+                    processConversion();
+                }
+            });
+        }
+
+        // initial state: empty results, but maybe show a smart default example hint by pre-filling example?? not necessary but we set a hint.
+        // Optionally prefill with first example from user description? but safer to keep placeholder only.
+        // However we set an example inside placeholder, but also we can populate optional "load demo" floating action? but not required.
+        // For better UX, we can add a tiny demo button OR leave placeholder. I add a "demo" under buttons?
+        // Insert a silent demo helper: extra small button inline? but not mandatory. but nice to show conversion power.
+        // I'll add a tiny "Try Example" near buttons to show power.
+        const extraDemoBtn = document.createElement('button');
+        extraDemoBtn.innerText = '📋 Load Demo';
+        extraDemoBtn.className = 'btn-outline';
+        extraDemoBtn.style.fontSize = '0.75rem';
+        extraDemoBtn.style.padding = '0.5rem 1.2rem';
+        extraDemoBtn.addEventListener('click', loadDemoExample);
+        const btnGroup = document.querySelector('.btn-group');
+        if (btnGroup) {
+            btnGroup.appendChild(extraDemoBtn);
+        }
+
+        bindEvents();
+        // initial render empty
+        currentConvertedLinks = [];
+        renderLinks([]);
+        // Extra: make sure the copy from links uses dynamic binding that's already attached per render.
+        // All good.
+        // Additional security: sanitization note: we only modify link strings, not executing anything.
+        console.log('Ready — paste any telegram.me or t.me links, convert to t.me with copy buttons');
+    })();
+</script>
+</body>
+</html>

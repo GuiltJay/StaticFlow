@@ -1,0 +1,1240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>B2 Vault — File Manager</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:        #080b0f;
+    --surface:   #0d1117;
+    --border:    #1a2030;
+    --border2:   #243048;
+    --muted:     #3a4a60;
+    --dim:       #5a6a80;
+    --text:      #c8d8f0;
+    --bright:    #e8f2ff;
+    --accent:    #3b7cf4;
+    --accent-lo: rgba(59,124,244,.12);
+    --accent-gl: rgba(59,124,244,.06);
+    --green:     #22c55e;
+    --amber:     #f59e0b;
+    --red:       #ef4444;
+    --mono:      'JetBrains Mono', monospace;
+    --sans:      'Syne', sans-serif;
+  }
+
+  html, body { height: 100%; background: var(--bg); color: var(--text); font-family: var(--mono); font-size: 13px; overflow: hidden; }
+
+  /* ── LAYOUT ── */
+  #app { display: grid; grid-template-rows: 56px 1fr; grid-template-columns: 260px 1fr; height: 100vh; }
+
+  /* ── TOPBAR ── */
+  #topbar {
+    grid-column: 1 / -1;
+    display: flex; align-items: center; gap: 12px;
+    padding: 0 20px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+  }
+  .logo { font-family: var(--sans); font-size: 17px; font-weight: 800; color: var(--bright); letter-spacing: -.5px; white-space: nowrap; }
+  .logo span { color: var(--accent); }
+  .top-sep { width: 1px; height: 20px; background: var(--border); margin: 0 4px; }
+  .bucket-pill {
+    display: flex; align-items: center; gap: 6px;
+    background: var(--accent-lo); border: 1px solid rgba(59,124,244,.3);
+    border-radius: 6px; padding: 4px 10px;
+    font-size: 11px; color: var(--accent); cursor: pointer;
+    transition: background .15s;
+  }
+  .bucket-pill:hover { background: rgba(59,124,244,.2); }
+  .bucket-pill .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+  #search-wrap { flex: 1; max-width: 360px; position: relative; margin-left: auto; }
+  #search {
+    width: 100%; background: var(--bg); border: 1px solid var(--border);
+    border-radius: 6px; padding: 7px 12px 7px 32px;
+    color: var(--text); font-family: var(--mono); font-size: 12px;
+    outline: none; transition: border-color .15s;
+  }
+  #search:focus { border-color: var(--accent); }
+  #search::placeholder { color: var(--muted); }
+  .search-ico { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--muted); pointer-events: none; }
+
+  .top-btn {
+    display: flex; align-items: center; gap: 6px;
+    background: none; border: 1px solid var(--border); border-radius: 6px;
+    padding: 6px 12px; color: var(--dim); font-family: var(--mono); font-size: 11px;
+    cursor: pointer; transition: all .15s; white-space: nowrap;
+  }
+  .top-btn:hover { border-color: var(--border2); color: var(--text); }
+  .top-btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .top-btn.primary:hover { background: #2d6be0; }
+
+  /* ── SIDEBAR ── */
+  #sidebar {
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    overflow-y: auto; padding: 16px 0;
+    display: flex; flex-direction: column;
+  }
+  .sidebar-label { font-size: 10px; text-transform: uppercase; letter-spacing: .12em; color: var(--muted); padding: 0 16px 8px; }
+  .tree-item {
+    display: flex; align-items: center; gap: 8px;
+    padding: 7px 16px; cursor: pointer; border-left: 2px solid transparent;
+    color: var(--dim); font-size: 12px; transition: all .12s;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .tree-item:hover { background: var(--accent-gl); color: var(--text); }
+  .tree-item.active { background: var(--accent-lo); color: var(--accent); border-left-color: var(--accent); }
+  .tree-item.folder { color: var(--text); }
+  .tree-item .ico { opacity: .7; flex-shrink: 0; }
+  .tree-item.indent { padding-left: 32px; }
+  .tree-item.indent2 { padding-left: 48px; }
+  .sidebar-sep { height: 1px; background: var(--border); margin: 12px 0; }
+
+  /* ── CREDS PANEL ── */
+  #creds-panel {
+    margin: 0 12px; border: 1px solid var(--border);
+    border-radius: 8px; padding: 14px; background: var(--bg);
+  }
+  #creds-panel label { display: block; font-size: 10px; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); margin-bottom: 5px; }
+  #creds-panel input, #creds-panel select {
+    width: 100%; background: var(--surface); border: 1px solid var(--border);
+    border-radius: 5px; padding: 7px 9px; color: var(--text);
+    font-family: var(--mono); font-size: 11px; outline: none;
+    margin-bottom: 10px; transition: border-color .15s;
+  }
+  #creds-panel input:focus, #creds-panel select:focus { border-color: var(--accent); }
+  #creds-panel select { appearance: none; cursor: pointer; }
+  .connect-btn {
+    width: 100%; background: var(--accent); border: none; border-radius: 5px;
+    padding: 8px; color: #fff; font-family: var(--mono); font-size: 11px;
+    font-weight: 600; cursor: pointer; transition: background .15s;
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+  }
+  .connect-btn:hover { background: #2d6be0; }
+  .connect-btn:disabled { background: var(--muted); cursor: not-allowed; }
+
+  /* ── MAIN CONTENT ── */
+  #main {
+    display: flex; flex-direction: column; overflow: hidden;
+  }
+
+  /* Breadcrumb */
+  #breadcrumb {
+    display: flex; align-items: center; gap: 4px;
+    padding: 10px 20px; border-bottom: 1px solid var(--border);
+    background: var(--surface); overflow-x: auto; flex-shrink: 0;
+  }
+  .crumb { color: var(--dim); font-size: 11px; cursor: pointer; transition: color .12s; white-space: nowrap; }
+  .crumb:hover { color: var(--accent); }
+  .crumb.active { color: var(--bright); cursor: default; }
+  .crumb-sep { color: var(--muted); font-size: 10px; }
+
+  /* Toolbar */
+  #toolbar {
+    display: flex; align-items: center; gap: 8px;
+    padding: 10px 20px; border-bottom: 1px solid var(--border);
+    background: var(--bg); flex-shrink: 0;
+  }
+  .view-btn {
+    background: none; border: 1px solid var(--border); border-radius: 5px;
+    padding: 5px 8px; color: var(--dim); cursor: pointer; transition: all .12s;
+    display: flex; align-items: center;
+  }
+  .view-btn:hover, .view-btn.active { border-color: var(--accent); color: var(--accent); background: var(--accent-gl); }
+  .sort-select {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 5px;
+    padding: 5px 10px; color: var(--dim); font-family: var(--mono); font-size: 11px;
+    outline: none; cursor: pointer;
+  }
+  .items-count { margin-left: auto; color: var(--muted); font-size: 11px; }
+
+  /* File area */
+  #file-area { flex: 1; overflow-y: auto; padding: 16px 20px; }
+
+  /* Empty / loading / error states */
+  .state-msg {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    height: 100%; gap: 12px; color: var(--muted); font-size: 12px;
+    text-align: center;
+  }
+  .state-msg .big-ico { font-size: 40px; opacity: .3; }
+  .state-msg h3 { font-family: var(--sans); color: var(--dim); font-size: 15px; }
+
+  /* ── TABLE VIEW ── */
+  #file-table { width: 100%; border-collapse: collapse; }
+  #file-table th {
+    text-align: left; font-size: 10px; text-transform: uppercase; letter-spacing: .1em;
+    color: var(--muted); padding: 0 10px 10px; border-bottom: 1px solid var(--border);
+    white-space: nowrap; cursor: pointer; user-select: none;
+  }
+  #file-table th:hover { color: var(--text); }
+  #file-table th .sort-arrow { margin-left: 4px; opacity: .5; }
+  #file-table td {
+    padding: 9px 10px; border-bottom: 1px solid var(--border);
+    vertical-align: middle; font-size: 12px;
+  }
+  #file-table tr:last-child td { border-bottom: none; }
+  #file-table tbody tr { cursor: pointer; transition: background .1s; }
+  #file-table tbody tr:hover { background: var(--accent-gl); }
+  #file-table tbody tr.selected { background: var(--accent-lo); }
+
+  .file-icon { font-size: 15px; margin-right: 8px; }
+  .file-name { color: var(--bright); display: flex; align-items: center; }
+  .file-name .folder-name { color: var(--accent); }
+  .file-size { color: var(--dim); font-size: 11px; white-space: nowrap; }
+  .file-date { color: var(--muted); font-size: 11px; white-space: nowrap; }
+  .file-type { color: var(--dim); font-size: 10px; text-transform: uppercase; letter-spacing: .05em; }
+  .file-actions { display: flex; gap: 4px; opacity: 0; transition: opacity .12s; }
+  tr:hover .file-actions { opacity: 1; }
+  .act-btn {
+    background: none; border: 1px solid var(--border); border-radius: 4px;
+    padding: 3px 7px; color: var(--dim); font-size: 10px; cursor: pointer;
+    font-family: var(--mono); transition: all .12s;
+  }
+  .act-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-gl); }
+  .act-btn.dl:hover { border-color: var(--green); color: var(--green); background: rgba(34,197,94,.08); }
+  .act-btn.del:hover { border-color: var(--red); color: var(--red); background: rgba(239,68,68,.08); }
+
+  /* ── GRID VIEW ── */
+  #file-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 10px;
+  }
+  .grid-item {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 8px; padding: 16px 12px 12px; cursor: pointer;
+    transition: all .15s; display: flex; flex-direction: column; align-items: center; gap: 8px;
+    text-align: center; position: relative; overflow: hidden;
+  }
+  .grid-item:hover { border-color: var(--border2); background: var(--accent-gl); transform: translateY(-1px); }
+  .grid-item.selected { border-color: var(--accent); background: var(--accent-lo); }
+  .grid-icon { font-size: 28px; }
+  .grid-name { font-size: 11px; color: var(--bright); word-break: break-all; line-height: 1.4; }
+  .grid-name.is-folder { color: var(--accent); }
+  .grid-meta { font-size: 10px; color: var(--muted); }
+  .grid-actions {
+    position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(8,11,15,.8); display: none;
+    flex-direction: column; align-items: center; justify-content: center; gap: 6px;
+    border-radius: 8px;
+  }
+  .grid-item:hover .grid-actions { display: flex; }
+
+  /* ── STATUS BAR ── */
+  #statusbar {
+    display: flex; align-items: center; gap: 16px;
+    padding: 8px 20px; border-top: 1px solid var(--border);
+    background: var(--surface); font-size: 10px; color: var(--muted);
+    flex-shrink: 0;
+  }
+  .status-pill {
+    display: flex; align-items: center; gap: 5px;
+    background: var(--bg); border: 1px solid var(--border);
+    border-radius: 4px; padding: 3px 8px;
+  }
+  .status-dot { width: 5px; height: 5px; border-radius: 50%; }
+  .status-dot.ok { background: var(--green); }
+  .status-dot.warn { background: var(--amber); }
+  .status-dot.err { background: var(--red); }
+
+  /* ── TOAST ── */
+  #toast-area { position: fixed; bottom: 40px; right: 20px; display: flex; flex-direction: column; gap: 8px; z-index: 999; }
+  .toast {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 8px; padding: 10px 16px; font-size: 12px;
+    display: flex; align-items: center; gap: 10px; color: var(--text);
+    animation: slideIn .2s ease; max-width: 320px;
+    box-shadow: 0 8px 32px rgba(0,0,0,.5);
+  }
+  .toast.ok { border-color: var(--green); }
+  .toast.err { border-color: var(--red); }
+  @keyframes slideIn { from{transform:translateX(20px);opacity:0} to{transform:none;opacity:1} }
+
+  /* ── MODAL ── */
+  #modal-overlay {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,.7);
+    z-index: 100; align-items: center; justify-content: center;
+  }
+  #modal-overlay.open { display: flex; }
+  #modal {
+    background: var(--surface); border: 1px solid var(--border2);
+    border-radius: 12px; padding: 28px; min-width: 320px; max-width: 480px; width: 90%;
+    box-shadow: 0 24px 80px rgba(0,0,0,.6);
+  }
+  #modal h2 { font-family: var(--sans); font-size: 16px; color: var(--bright); margin-bottom: 16px; }
+  #modal p { color: var(--dim); font-size: 12px; line-height: 1.6; margin-bottom: 16px; }
+  #modal .modal-meta { background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 12px; font-size: 11px; margin-bottom: 16px; }
+  #modal .modal-meta div { display: flex; justify-content: space-between; margin-bottom: 6px; }
+  #modal .modal-meta div:last-child { margin-bottom: 0; }
+  #modal .modal-meta .mk { color: var(--muted); }
+  #modal .modal-meta .mv { color: var(--text); text-align: right; max-width: 60%; word-break: break-all; }
+  .modal-actions { display: flex; gap: 8px; justify-content: flex-end; }
+  .modal-btn {
+    background: none; border: 1px solid var(--border); border-radius: 6px;
+    padding: 8px 16px; color: var(--dim); font-family: var(--mono); font-size: 11px;
+    cursor: pointer; transition: all .12s;
+  }
+  .modal-btn:hover { border-color: var(--border2); color: var(--text); }
+  .modal-btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .modal-btn.primary:hover { background: #2d6be0; }
+
+  /* ── UPLOAD ZONE ── */
+  #upload-zone {
+    border: 1.5px dashed var(--border2); border-radius: 8px;
+    padding: 24px; text-align: center; color: var(--muted);
+    margin-bottom: 16px; cursor: pointer; transition: all .15s;
+  }
+  #upload-zone:hover, #upload-zone.dragover { border-color: var(--accent); color: var(--accent); background: var(--accent-gl); }
+  #upload-zone .uz-icon { font-size: 28px; margin-bottom: 8px; }
+  #upload-zone p { font-size: 12px; }
+  #upload-zone p small { font-size: 10px; opacity: .6; display: block; margin-top: 4px; }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 4px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+
+  /* Spinner */
+  .spin { display: inline-block; animation: spin .7s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Responsive */
+  @media (max-width: 680px) {
+    #app { grid-template-columns: 1fr; }
+    #sidebar { display: none; }
+  }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- TOPBAR -->
+  <header id="topbar">
+    <div class="logo">B2<span>Vault</span></div>
+    <div class="top-sep"></div>
+    <div class="bucket-pill" id="bucket-badge" onclick="openSettings()">
+      <div class="dot"></div>
+      <span id="bucket-label">not connected</span>
+    </div>
+
+    <div id="search-wrap">
+      <svg class="search-ico" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+      <input id="search" type="text" placeholder="search files…" oninput="filterFiles()">
+    </div>
+
+    <button class="top-btn" onclick="refreshFiles()">
+      <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+      Refresh
+    </button>
+    <button class="top-btn primary" onclick="openUploadModal()">
+      <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg>
+      Upload
+    </button>
+  </header>
+
+  <!-- SIDEBAR -->
+  <aside id="sidebar">
+    <div style="padding:0 12px 12px;">
+      <div id="creds-panel">
+        <div class="sidebar-label" style="padding:0 0 10px;">Connection</div>
+
+        <label>Auth Mode</label>
+        <select id="auth-mode" onchange="toggleAuthMode()">
+          <option value="b2native">B2 Native API</option>
+          <option value="s3">S3 Compatible</option>
+        </select>
+
+        <div id="b2-fields">
+          <label>Application Key ID</label>
+          <input type="text" id="keyId" placeholder="0012abc…" autocomplete="off">
+          <label>Application Key</label>
+          <input type="password" id="appKey" placeholder="••••••••••••••••">
+        </div>
+
+        <div id="s3-fields" style="display:none">
+          <label>Endpoint</label>
+          <input type="text" id="s3endpoint" placeholder="https://s3.us-west-004.backblazeb2.com" autocomplete="off">
+          <label>Access Key ID</label>
+          <input type="text" id="s3keyId" placeholder="keyId…" autocomplete="off">
+          <label>Secret Access Key</label>
+          <input type="password" id="s3secret" placeholder="••••••••••••••••">
+        </div>
+
+        <label>Bucket Name</label>
+        <input type="text" id="bucket" placeholder="my-bucket">
+
+        <button class="connect-btn" id="connect-btn" onclick="connect()">
+          <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M15 7h3a5 5 0 0 1 0 10h-3m-6 0H6A5 5 0 0 1 6 7h3"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+          Connect
+        </button>
+      </div>
+    </div>
+
+    <div class="sidebar-sep"></div>
+    <div class="sidebar-label">Folders</div>
+    <div id="folder-tree">
+      <div class="tree-item" style="color:var(--muted);font-size:11px;padding:4px 16px;">connect to browse</div>
+    </div>
+
+    <div class="sidebar-sep" style="margin-top:auto;"></div>
+    <div style="padding:0 12px 4px;">
+      <div id="storage-stats" style="font-size:10px;color:var(--muted);line-height:1.7;padding:8px;background:var(--bg);border-radius:6px;border:1px solid var(--border);">
+        <div>Files: <span id="stat-files" style="color:var(--dim)">—</span></div>
+        <div>Total size: <span id="stat-size" style="color:var(--dim)">—</span></div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main id="main">
+    <!-- Breadcrumb -->
+    <nav id="breadcrumb">
+      <span class="crumb active" onclick="navTo('')">⌂ root</span>
+    </nav>
+
+    <!-- Toolbar -->
+    <div id="toolbar">
+      <button class="view-btn active" id="btn-table" onclick="setView('table')" title="Table view">
+        <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+      </button>
+      <button class="view-btn" id="btn-grid" onclick="setView('grid')" title="Grid view">
+        <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+      </button>
+      <select class="sort-select" onchange="sortFiles(this.value)">
+        <option value="name">Name ↑</option>
+        <option value="name-desc">Name ↓</option>
+        <option value="size">Size ↑</option>
+        <option value="size-desc">Size ↓</option>
+        <option value="date">Date ↑</option>
+        <option value="date-desc">Date ↓</option>
+      </select>
+      <span class="items-count" id="items-count"></span>
+    </div>
+
+    <!-- File area -->
+    <div id="file-area">
+      <div class="state-msg" id="empty-state">
+        <div class="big-ico">🗄️</div>
+        <h3>Not Connected</h3>
+        <div>Enter your B2 credentials in the sidebar and click Connect.</div>
+      </div>
+    </div>
+
+    <!-- Status bar -->
+    <div id="statusbar">
+      <div class="status-pill">
+        <div class="status-dot" id="status-dot" style="background:var(--muted)"></div>
+        <span id="status-text">idle</span>
+      </div>
+      <span id="status-path" style="font-family:var(--mono)"></span>
+      <span style="margin-left:auto" id="status-info"></span>
+    </div>
+  </main>
+</div>
+
+<!-- TOAST AREA -->
+<div id="toast-area"></div>
+
+<!-- MODAL -->
+<div id="modal-overlay" onclick="if(event.target===this)closeModal()">
+  <div id="modal">
+    <h2 id="modal-title">Modal</h2>
+    <div id="modal-body"></div>
+    <div class="modal-actions" id="modal-actions"></div>
+  </div>
+</div>
+
+<script>
+/* ────────────────────────────────
+   STATE
+──────────────────────────────── */
+const state = {
+  mode: 'b2native',     // 'b2native' | 's3'
+  connected: false,
+  authToken: null,       // B2 native
+  apiUrl: null,
+  downloadUrl: null,
+  bucket: '',
+  prefix: '',            // current folder
+  allFiles: [],          // flat list from API
+  view: 'table',
+  sortKey: 'name',
+  filterQ: '',
+  // S3
+  s3endpoint: '',
+  s3keyId: '',
+  s3secret: '',
+};
+
+/* ────────────────────────────────
+   UI HELPERS
+──────────────────────────────── */
+function toast(msg, type='ok') {
+  const t = document.createElement('div');
+  t.className = `toast ${type}`;
+  const icon = type==='ok'?'✓':type==='err'?'✕':'⋯';
+  t.innerHTML = `<span style="color:var(--${type==='ok'?'green':type==='err'?'red':'amber'})">${icon}</span> ${msg}`;
+  document.getElementById('toast-area').appendChild(t);
+  setTimeout(()=>{t.style.opacity='0';t.style.transition='opacity .3s';setTimeout(()=>t.remove(),300);}, 3000);
+}
+
+function setStatus(msg, dotClass='ok') {
+  const classes = {ok:'var(--green)',warn:'var(--amber)',err:'var(--red)',idle:'var(--muted)'};
+  document.getElementById('status-dot').style.background = classes[dotClass]||classes.ok;
+  document.getElementById('status-text').textContent = msg;
+}
+
+function setStatusPath(p) { document.getElementById('status-path').textContent = p ? `/ ${p}` : ''; }
+
+function openModal(title, bodyHTML, actions) {
+  document.getElementById('modal-title').textContent = title;
+  document.getElementById('modal-body').innerHTML = bodyHTML;
+  document.getElementById('modal-actions').innerHTML = actions;
+  document.getElementById('modal-overlay').classList.add('open');
+}
+function closeModal() { document.getElementById('modal-overlay').classList.remove('open'); }
+
+/* ────────────────────────────────
+   AUTH MODE TOGGLE
+──────────────────────────────── */
+function toggleAuthMode() {
+  state.mode = document.getElementById('auth-mode').value;
+  document.getElementById('b2-fields').style.display = state.mode==='b2native' ? '' : 'none';
+  document.getElementById('s3-fields').style.display = state.mode==='s3' ? '' : 'none';
+}
+
+/* ────────────────────────────────
+   B2 NATIVE AUTH
+──────────────────────────────── */
+async function b2Authorize() {
+  const keyId = document.getElementById('keyId').value.trim();
+  const appKey = document.getElementById('appKey').value.trim();
+  if (!keyId||!appKey) throw new Error('Enter Key ID and Application Key');
+
+  const creds = btoa(`${keyId}:${appKey}`);
+  const res = await fetch('https://api.backblazeb2.com/b2api/v3/b2_authorize_account', {
+    headers: { Authorization: `Basic ${creds}` }
+  });
+  if (!res.ok) { const e = await res.json(); throw new Error(e.message||'Auth failed'); }
+  const d = await res.json();
+  state.authToken   = d.authorizationToken;
+  state.apiUrl      = d.apiInfo.storageApi.apiUrl;
+  state.downloadUrl = d.downloadUrl || d.apiInfo.storageApi.downloadUrl;
+  return d;
+}
+
+async function b2ListFiles(prefix='', delimiter='/') {
+  const res = await fetch(`${state.apiUrl}/b2api/v3/b2_list_file_names`, {
+    method: 'POST',
+    headers: { Authorization: state.authToken, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      bucketId: state.bucketId,
+      prefix,
+      delimiter,
+      maxFileCount: 1000
+    })
+  });
+  if (!res.ok) { const e = await res.json(); throw new Error(e.message||'List failed'); }
+  return res.json();
+}
+
+async function b2GetBucketId(name) {
+  const res = await fetch(`${state.apiUrl}/b2api/v3/b2_list_buckets`, {
+    method: 'POST',
+    headers: { Authorization: state.authToken, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ accountId: state.accountId, bucketName: name })
+  });
+  if (!res.ok) { const e = await res.json(); throw new Error(e.message); }
+  const d = await res.json();
+  if (!d.buckets||!d.buckets.length) throw new Error(`Bucket "${name}" not found`);
+  return d.buckets[0].bucketId;
+}
+
+async function b2GetDownloadUrl(fileName) {
+  // Get a download URL. For public buckets use direct; for private get a signed URL.
+  const url = `${state.downloadUrl}/file/${state.bucket}/${encodeURIComponent(fileName)}`;
+  return url;
+}
+
+async function b2GetDownloadAuth(fileName, validDuration=3600) {
+  try {
+    const res = await fetch(`${state.apiUrl}/b2api/v3/b2_get_download_authorization`, {
+      method: 'POST',
+      headers: { Authorization: state.authToken, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ bucketId: state.bucketId, fileNamePrefix: fileName, validDurationInSeconds: validDuration })
+    });
+    if (!res.ok) return null;
+    const d = await res.json();
+    return d.authorizationToken;
+  } catch { return null; }
+}
+
+/* ────────────────────────────────
+   S3 COMPATIBLE (AWS SigV4 lite)
+──────────────────────────────── */
+async function sha256hex(msg) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(msg));
+  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+async function hmacSHA256(key, data) {
+  const k = typeof key==='string' ? new TextEncoder().encode(key) : key;
+  const ck = await crypto.subtle.importKey('raw', k, {name:'HMAC',hash:'SHA-256'}, false, ['sign']);
+  const sig = await crypto.subtle.sign('HMAC', ck, new TextEncoder().encode(data));
+  return new Uint8Array(sig);
+}
+async function getSigningKey(secret, date, region, service) {
+  const kDate    = await hmacSHA256('AWS4'+secret, date);
+  const kRegion  = await hmacSHA256(kDate, region);
+  const kService = await hmacSHA256(kRegion, service);
+  const kSign    = await hmacSHA256(kService, 'aws4_request');
+  return kSign;
+}
+function buf2hex(buf) { return Array.from(buf).map(b=>b.toString(16).padStart(2,'0')).join(''); }
+
+async function s3SignedRequest(method, path, queryParams={}) {
+  const endpoint = state.s3endpoint.replace(/\/$/, '');
+  const urlObj = new URL(endpoint + path);
+  const amzDate = new Date().toISOString().replace(/[:\-]|\.\d{3}/g,'');
+  const dateStamp = amzDate.slice(0,8);
+
+  // Extract region from endpoint
+  const regionMatch = endpoint.match(/s3\.([a-z0-9-]+)\.backblazeb2\.com/);
+  const region = regionMatch ? regionMatch[1] : 'us-east-1';
+  const service = 's3';
+
+  // Canonical query string
+  const sortedQ = Object.keys(queryParams).sort().map(k=>`${encodeURIComponent(k)}=${encodeURIComponent(queryParams[k])}`).join('&');
+  urlObj.search = sortedQ;
+
+  const payloadHash = await sha256hex('');
+  const canonicalHeaders = `host:${urlObj.hostname}\nx-amz-content-sha256:${payloadHash}\nx-amz-date:${amzDate}\n`;
+  const signedHeaders = 'host;x-amz-content-sha256;x-amz-date';
+  const canonicalRequest = [method, urlObj.pathname, sortedQ, canonicalHeaders, signedHeaders, payloadHash].join('\n');
+
+  const credScope = `${dateStamp}/${region}/${service}/aws4_request`;
+  const strToSign = `AWS4-HMAC-SHA256\n${amzDate}\n${credScope}\n${await sha256hex(canonicalRequest)}`;
+  const sigKey = await getSigningKey(state.s3secret, dateStamp, region, service);
+  const signature = buf2hex(await hmacSHA256(sigKey, strToSign));
+
+  const authHeader = `AWS4-HMAC-SHA256 Credential=${state.s3keyId}/${credScope}, SignedHeaders=${signedHeaders}, Signature=${signature}`;
+
+  const headers = {
+    'Authorization': authHeader,
+    'x-amz-date': amzDate,
+    'x-amz-content-sha256': payloadHash
+  };
+
+  const finalUrl = urlObj.toString();
+  return { url: finalUrl, headers };
+}
+
+async function s3ListObjects(prefix='') {
+  const params = { 'list-type': '2', 'max-keys': '1000', delimiter: '/' };
+  if (prefix) params['prefix'] = prefix;
+  const { url, headers } = await s3SignedRequest('GET', `/${state.bucket}`, params);
+  const res = await fetch(url, { headers });
+  if (!res.ok) throw new Error(`S3 list failed: ${res.status} ${res.statusText}`);
+  const text = await res.text();
+  return parseS3XML(text);
+}
+
+function parseS3XML(xml) {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(xml, 'application/xml');
+
+  const prefixes = [...doc.querySelectorAll('CommonPrefixes Prefix')].map(n=>({
+    isFolder: true,
+    name: n.textContent.replace(/\/$/, '').split('/').pop() + '/',
+    fullName: n.textContent,
+    size: 0,
+    lastModified: null,
+    contentType: 'folder'
+  }));
+
+  const files = [...doc.querySelectorAll('Contents')].map(el=>({
+    isFolder: false,
+    name: el.querySelector('Key')?.textContent?.split('/').pop() || '',
+    fullName: el.querySelector('Key')?.textContent || '',
+    size: parseInt(el.querySelector('Size')?.textContent||'0'),
+    lastModified: el.querySelector('LastModified')?.textContent || '',
+    contentType: 'application/octet-stream'
+  })).filter(f=>f.name);
+
+  return [...prefixes, ...files];
+}
+
+/* ────────────────────────────────
+   CONNECT
+──────────────────────────────── */
+async function connect() {
+  const btn = document.getElementById('connect-btn');
+  state.bucket = document.getElementById('bucket').value.trim();
+  if (!state.bucket) { toast('Enter bucket name', 'err'); return; }
+
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spin">↻</span> Connecting…';
+  setStatus('connecting…', 'warn');
+
+  try {
+    if (state.mode === 'b2native') {
+      const auth = await b2Authorize();
+      state.accountId = auth.accountId;
+      state.bucketId  = await b2GetBucketId(state.bucket);
+      document.getElementById('bucket-label').textContent = state.bucket;
+      toast(`Connected to ${state.bucket}`, 'ok');
+    } else {
+      state.s3endpoint = document.getElementById('s3endpoint').value.trim();
+      state.s3keyId    = document.getElementById('s3keyId').value.trim();
+      state.s3secret   = document.getElementById('s3secret').value.trim();
+      if (!state.s3endpoint||!state.s3keyId||!state.s3secret) throw new Error('Fill in all S3 fields');
+      // Test connection
+      await s3ListObjects('');
+      document.getElementById('bucket-label').textContent = state.bucket + ' (s3)';
+      toast(`S3 connected to ${state.bucket}`, 'ok');
+    }
+
+    state.connected = true;
+    document.getElementById('status-dot').style.background = 'var(--green)';
+    await navTo('');
+  } catch(e) {
+    toast(e.message, 'err');
+    setStatus('error', 'err');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M15 7h3a5 5 0 0 1 0 10h-3m-6 0H6A5 5 0 0 1 6 7h3"/><line x1="8" y1="12" x2="16" y2="12"/></svg> Reconnect';
+  }
+}
+
+/* ────────────────────────────────
+   LIST FILES
+──────────────────────────────── */
+async function listFiles(prefix='') {
+  if (state.mode === 'b2native') {
+    const d = await b2ListFiles(prefix, '/');
+    const folders = (d.folders||[]).map(f=>({
+      isFolder:true,
+      name: f.replace(prefix,'').replace(/\/$/,'') + '/',
+      fullName: f,
+      size: 0,
+      lastModified: null,
+      contentType: 'folder'
+    }));
+    const files = (d.files||[]).map(f=>({
+      isFolder: false,
+      name: f.fileName.replace(prefix,''),
+      fullName: f.fileName,
+      size: f.contentLength||f.size||0,
+      lastModified: f.uploadTimestamp ? new Date(f.uploadTimestamp).toISOString() : null,
+      contentType: f.contentType||'',
+      fileId: f.fileId
+    })).filter(f=>f.name);
+    return [...folders, ...files];
+  } else {
+    return s3ListObjects(prefix);
+  }
+}
+
+async function refreshFiles() {
+  if (!state.connected) return;
+  await navTo(state.prefix);
+}
+
+/* ────────────────────────────────
+   NAVIGATION
+──────────────────────────────── */
+async function navTo(prefix) {
+  if (!state.connected) return;
+  state.prefix = prefix;
+  setStatus('loading…', 'warn');
+  setStatusPath(prefix);
+
+  const fileArea = document.getElementById('file-area');
+  fileArea.innerHTML = '<div class="state-msg"><span class="big-ico spin" style="font-size:24px">↻</span><div>Loading…</div></div>';
+
+  try {
+    state.allFiles = await listFiles(prefix);
+    updateBreadcrumb(prefix);
+    updateFolderTree(state.allFiles, prefix);
+    updateStats(state.allFiles);
+    renderFiles();
+    setStatus('ready', 'ok');
+  } catch(e) {
+    fileArea.innerHTML = `<div class="state-msg"><div class="big-ico">⚠</div><h3>Error</h3><div>${e.message}</div></div>`;
+    setStatus('error', 'err');
+    toast(e.message, 'err');
+  }
+}
+
+/* ────────────────────────────────
+   RENDER FILES
+──────────────────────────────── */
+function getFileIcon(name, isFolder, ct) {
+  if (isFolder) return '📁';
+  const ext = name.split('.').pop().toLowerCase();
+  const map = {
+    jpg:'🖼',jpeg:'🖼',png:'🖼',gif:'🖼',webp:'🖼',svg:'🖼',ico:'🖼',
+    mp4:'🎬',mov:'🎬',avi:'🎬',mkv:'🎬',webm:'🎬',
+    mp3:'🎵',wav:'🎵',flac:'🎵',ogg:'🎵',aac:'🎵',
+    pdf:'📄',doc:'📝',docx:'📝',xls:'📊',xlsx:'📊',ppt:'📋',pptx:'📋',
+    zip:'📦',gz:'📦',tar:'📦',rar:'📦','7z':'📦',
+    js:'💻',ts:'💻',py:'💻',sh:'💻',html:'💻',css:'💻',json:'💻',
+    txt:'📃',md:'📃',csv:'📃',log:'📃',
+    iso:'💿',dmg:'💿',
+  };
+  return map[ext]||'📄';
+}
+
+function fmtSize(b) {
+  if (!b) return '—';
+  if (b<1024) return b+'B';
+  if (b<1048576) return (b/1024).toFixed(1)+'KB';
+  if (b<1073741824) return (b/1048576).toFixed(1)+'MB';
+  return (b/1073741824).toFixed(2)+'GB';
+}
+
+function fmtDate(d) {
+  if (!d) return '—';
+  const dt = new Date(d);
+  if (isNaN(dt)) return '—';
+  const now = new Date();
+  if (now-dt < 86400000) return dt.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+  if (now-dt < 7*86400000) return dt.toLocaleDateString([], {weekday:'short',hour:'2-digit',minute:'2-digit'});
+  return dt.toLocaleDateString([], {year:'numeric',month:'short',day:'numeric'});
+}
+
+function getSorted(files) {
+  const q = state.filterQ.toLowerCase();
+  let list = q ? files.filter(f=>f.name.toLowerCase().includes(q)) : [...files];
+  const [k, desc] = state.sortKey.includes('-desc') ? [state.sortKey.replace('-desc',''), true] : [state.sortKey, false];
+  list.sort((a,b)=>{
+    if (a.isFolder !== b.isFolder) return a.isFolder ? -1 : 1;
+    let va = a[k]||'', vb = b[k]||'';
+    if (k==='size') { va=a.size||0; vb=b.size||0; }
+    const cmp = typeof va==='number' ? va-vb : String(va).localeCompare(String(vb));
+    return desc ? -cmp : cmp;
+  });
+  return list;
+}
+
+function renderFiles() {
+  const files = getSorted(state.allFiles);
+  const area = document.getElementById('file-area');
+  const cnt = document.getElementById('items-count');
+  cnt.textContent = `${files.length} item${files.length!==1?'s':''}`;
+
+  if (!files.length) {
+    area.innerHTML = '<div class="state-msg"><div class="big-ico">📂</div><h3>Empty folder</h3><div>No files found here.</div></div>';
+    return;
+  }
+
+  if (state.view === 'table') renderTable(files, area);
+  else renderGrid(files, area);
+}
+
+function renderTable(files, area) {
+  let html = `<table id="file-table"><thead><tr>
+    <th onclick="sortFiles('name')">Name <span class="sort-arrow">↕</span></th>
+    <th onclick="sortFiles('size')">Size <span class="sort-arrow">↕</span></th>
+    <th onclick="sortFiles('contentType')">Type <span class="sort-arrow">↕</span></th>
+    <th onclick="sortFiles('lastModified')">Modified <span class="sort-arrow">↕</span></th>
+    <th>Actions</th>
+  </tr></thead><tbody>`;
+
+  for (const f of files) {
+    const ico = getFileIcon(f.name, f.isFolder, f.contentType);
+    const namePart = f.isFolder
+      ? `<span class="folder-name">${escHtml(f.name)}</span>`
+      : escHtml(f.name);
+    const ext = f.isFolder ? 'folder' : (f.name.split('.').pop()||'file').toUpperCase();
+    html += `<tr onclick="rowClick(event,'${escAttr(f.fullName)}',${f.isFolder})">
+      <td><div class="file-name"><span class="file-icon">${ico}</span>${namePart}</div></td>
+      <td><span class="file-size">${fmtSize(f.size)}</span></td>
+      <td><span class="file-type">${ext}</span></td>
+      <td><span class="file-date">${fmtDate(f.lastModified)}</span></td>
+      <td>
+        <div class="file-actions">
+          ${!f.isFolder?`<button class="act-btn" onclick="infoFile(event,'${escAttr(f.fullName)}')">info</button>
+          <button class="act-btn dl" onclick="downloadFile(event,'${escAttr(f.fullName)}')">↓ dl</button>`:''}
+          <button class="act-btn del" onclick="deleteFile(event,'${escAttr(f.fullName)}','${escAttr(f.name)}')">del</button>
+        </div>
+      </td>
+    </tr>`;
+  }
+  html += '</tbody></table>';
+  area.innerHTML = html;
+}
+
+function renderGrid(files, area) {
+  let html = '<div id="file-grid">';
+  for (const f of files) {
+    const ico = getFileIcon(f.name, f.isFolder, f.contentType);
+    html += `<div class="grid-item" onclick="rowClick(event,'${escAttr(f.fullName)}',${f.isFolder})">
+      <div class="grid-icon">${ico}</div>
+      <div class="grid-name ${f.isFolder?'is-folder':''}">${escHtml(f.name.replace(/\/$/,''))}</div>
+      <div class="grid-meta">${f.isFolder?'folder':fmtSize(f.size)}</div>
+      <div class="grid-actions">
+        ${!f.isFolder?`<button class="act-btn dl" onclick="downloadFile(event,'${escAttr(f.fullName)}')">↓ Download</button>
+        <button class="act-btn" onclick="infoFile(event,'${escAttr(f.fullName)}')">Info</button>`:''}
+        <button class="act-btn del" onclick="deleteFile(event,'${escAttr(f.fullName)}','${escAttr(f.name)}')">Delete</button>
+      </div>
+    </div>`;
+  }
+  html += '</div>';
+  area.innerHTML = html;
+}
+
+function rowClick(ev, fullName, isFolder) {
+  if (ev.target.tagName === 'BUTTON') return;
+  if (isFolder) navTo(fullName);
+}
+
+/* ────────────────────────────────
+   FOLDER TREE (sidebar)
+──────────────────────────────── */
+function updateFolderTree(files, currentPrefix) {
+  const folders = files.filter(f=>f.isFolder);
+  const tree = document.getElementById('folder-tree');
+  if (!folders.length && !currentPrefix) {
+    tree.innerHTML = '<div class="tree-item" style="color:var(--muted);font-size:11px;padding:4px 16px;">no folders</div>';
+    return;
+  }
+
+  let html = `<div class="tree-item ${!currentPrefix?'active':''}" onclick="navTo('')">
+    <svg class="ico" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg> /
+  </div>`;
+
+  if (currentPrefix) {
+    // Back option
+    const parts = currentPrefix.replace(/\/$/,'').split('/');
+    parts.pop();
+    const parentPrefix = parts.length ? parts.join('/')+'/': '';
+    html += `<div class="tree-item" onclick="navTo('${escAttr(parentPrefix)}')">
+      <svg class="ico" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg> ..
+    </div>`;
+  }
+
+  for (const f of folders) {
+    const isActive = state.prefix === f.fullName;
+    html += `<div class="tree-item indent ${isActive?'active':''} folder" onclick="navTo('${escAttr(f.fullName)}')">
+      <svg class="ico" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+      ${escHtml(f.name.replace(/\/$/,''))}
+    </div>`;
+  }
+  tree.innerHTML = html;
+}
+
+/* ────────────────────────────────
+   BREADCRUMB
+──────────────────────────────── */
+function updateBreadcrumb(prefix) {
+  const nav = document.getElementById('breadcrumb');
+  let html = `<span class="crumb ${!prefix?'active':''}" onclick="navTo('')">⌂ root</span>`;
+  if (prefix) {
+    const parts = prefix.replace(/\/$/,'').split('/');
+    let built = '';
+    parts.forEach((p, i) => {
+      built += p + '/';
+      const isLast = i === parts.length-1;
+      html += `<span class="crumb-sep">›</span><span class="crumb ${isLast?'active':''}" onclick="navTo('${escAttr(built)}')">${escHtml(p)}</span>`;
+    });
+  }
+  nav.innerHTML = html;
+}
+
+/* ────────────────────────────────
+   STATS
+──────────────────────────────── */
+function updateStats(files) {
+  const f = files.filter(x=>!x.isFolder);
+  document.getElementById('stat-files').textContent = f.length;
+  document.getElementById('stat-size').textContent = fmtSize(f.reduce((s,x)=>s+(x.size||0),0));
+}
+
+/* ────────────────────────────────
+   SORT / FILTER / VIEW
+──────────────────────────────── */
+function sortFiles(key) {
+  state.sortKey = state.sortKey===key ? key+'-desc' : key;
+  renderFiles();
+}
+function filterFiles() {
+  state.filterQ = document.getElementById('search').value;
+  renderFiles();
+}
+function setView(v) {
+  state.view = v;
+  document.getElementById('btn-table').classList.toggle('active', v==='table');
+  document.getElementById('btn-grid').classList.toggle('active', v==='grid');
+  renderFiles();
+}
+
+/* ────────────────────────────────
+   DOWNLOAD
+──────────────────────────────── */
+async function downloadFile(ev, fullName) {
+  ev.stopPropagation();
+  setStatus('preparing download…', 'warn');
+  try {
+    let url;
+    if (state.mode === 'b2native') {
+      const dlAuth = await b2GetDownloadAuth(fullName);
+      url = `${state.downloadUrl}/file/${state.bucket}/${encodeURIComponent(fullName)}`;
+      if (dlAuth) url += `?Authorization=${encodeURIComponent(dlAuth)}`;
+    } else {
+      const { url: su, headers } = await s3SignedRequest('GET', `/${state.bucket}/${fullName}`);
+      // For S3, create a presigned URL directly
+      url = await s3PresignedGet(fullName);
+    }
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = fullName.split('/').pop();
+    a.target = '_blank';
+    a.click();
+    setStatus('download started', 'ok');
+    toast(`Downloading ${fullName.split('/').pop()}`, 'ok');
+  } catch(e) {
+    toast(e.message, 'err');
+    setStatus('error', 'err');
+  }
+}
+
+async function s3PresignedGet(key, expires=3600) {
+  // Generate a presigned GET URL using query-string signature
+  const endpoint = state.s3endpoint.replace(/\/$/, '');
+  const urlObj = new URL(`${endpoint}/${state.bucket}/${key}`);
+  const amzDate = new Date().toISOString().replace(/[:\-]|\.\d{3}/g,'');
+  const dateStamp = amzDate.slice(0,8);
+  const regionMatch = endpoint.match(/s3\.([a-z0-9-]+)\.backblazeb2\.com/);
+  const region = regionMatch ? regionMatch[1] : 'us-east-1';
+
+  const credScope = `${dateStamp}/${region}/s3/aws4_request`;
+  const credential = `${state.s3keyId}/${credScope}`;
+  const qp = new URLSearchParams({
+    'X-Amz-Algorithm': 'AWS4-HMAC-SHA256',
+    'X-Amz-Credential': credential,
+    'X-Amz-Date': amzDate,
+    'X-Amz-Expires': String(expires),
+    'X-Amz-SignedHeaders': 'host'
+  });
+  const sortedQ = [...qp.entries()].sort((a,b)=>a[0].localeCompare(b[0])).map(([k,v])=>`${encodeURIComponent(k)}=${encodeURIComponent(v)}`).join('&');
+  const canonicalRequest = ['GET', urlObj.pathname, sortedQ, `host:${urlObj.hostname}\n`, 'host', 'UNSIGNED-PAYLOAD'].join('\n');
+  const strToSign = `AWS4-HMAC-SHA256\n${amzDate}\n${credScope}\n${await sha256hex(canonicalRequest)}`;
+  const sigKey = await getSigningKey(state.s3secret, dateStamp, region, 's3');
+  const sig = buf2hex(await hmacSHA256(sigKey, strToSign));
+  return `${urlObj.origin}${urlObj.pathname}?${sortedQ}&X-Amz-Signature=${sig}`;
+}
+
+/* ────────────────────────────────
+   FILE INFO MODAL
+──────────────────────────────── */
+function infoFile(ev, fullName) {
+  ev.stopPropagation();
+  const f = state.allFiles.find(x=>x.fullName===fullName);
+  if (!f) return;
+  const body = `<div class="modal-meta">
+    <div><span class="mk">Name</span><span class="mv">${escHtml(f.name)}</span></div>
+    <div><span class="mk">Path</span><span class="mv">${escHtml(f.fullName)}</span></div>
+    <div><span class="mk">Size</span><span class="mv">${fmtSize(f.size)}</span></div>
+    <div><span class="mk">Type</span><span class="mv">${escHtml(f.contentType||'—')}</span></div>
+    <div><span class="mk">Modified</span><span class="mv">${fmtDate(f.lastModified)}</span></div>
+    ${f.fileId?`<div><span class="mk">File ID</span><span class="mv">${escHtml(f.fileId)}</span></div>`:''}
+  </div>`;
+  openModal('File Info',body,`
+    <button class="modal-btn" onclick="closeModal()">Close</button>
+    <button class="modal-btn primary" onclick="closeModal();downloadFile(new Event('x'),'${escAttr(fullName)}')">↓ Download</button>
+  `);
+}
+
+/* ────────────────────────────────
+   DELETE
+──────────────────────────────── */
+function deleteFile(ev, fullName, name) {
+  ev.stopPropagation();
+  openModal('Confirm Delete',
+    `<p>Delete <strong style="color:var(--bright)">${escHtml(name)}</strong>? This cannot be undone.</p>`,
+    `<button class="modal-btn" onclick="closeModal()">Cancel</button>
+     <button class="modal-btn" style="border-color:var(--red);color:var(--red)" onclick="closeModal();doDelete('${escAttr(fullName)}')">Delete</button>`
+  );
+}
+
+async function doDelete(fullName) {
+  setStatus('deleting…', 'warn');
+  try {
+    if (state.mode === 'b2native') {
+      const f = state.allFiles.find(x=>x.fullName===fullName);
+      const fileId = f?.fileId;
+      if (!fileId) throw new Error('File ID not found (cannot delete without fileId in B2 native API)');
+      const res = await fetch(`${state.apiUrl}/b2api/v3/b2_delete_file_version`, {
+        method: 'POST',
+        headers: { Authorization: state.authToken, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fileName: fullName, fileId })
+      });
+      if (!res.ok) { const e = await res.json(); throw new Error(e.message); }
+    } else {
+      const { url, headers } = await s3SignedRequest('DELETE', `/${state.bucket}/${fullName}`);
+      const res = await fetch(url, { method: 'DELETE', headers });
+      if (!res.ok && res.status !== 204) throw new Error(`Delete failed: ${res.status}`);
+    }
+    toast(`Deleted ${fullName.split('/').pop()}`, 'ok');
+    await navTo(state.prefix);
+  } catch(e) {
+    toast(e.message, 'err');
+    setStatus('error', 'err');
+  }
+}
+
+/* ────────────────────────────────
+   UPLOAD
+──────────────────────────────── */
+function openUploadModal() {
+  if (!state.connected) { toast('Connect first', 'err'); return; }
+  const body = `
+    <div id="upload-zone" ondragover="uzDragOver(event)" ondragleave="uzDragLeave()" ondrop="uzDrop(event)" onclick="document.getElementById('file-input').click()">
+      <div class="uz-icon">☁</div>
+      <p>Drop files here or click to browse<small>Files will be uploaded to: /${escHtml(state.bucket)}/${escHtml(state.prefix)}</small></p>
+    </div>
+    <input type="file" id="file-input" multiple style="display:none" onchange="handleFileSelect(this.files)">
+    <div id="upload-list" style="font-size:11px;color:var(--dim);max-height:120px;overflow-y:auto;"></div>
+  `;
+  openModal('Upload Files', body, `<button class="modal-btn" onclick="closeModal()">Cancel</button>`);
+}
+
+function uzDragOver(e) { e.preventDefault(); document.getElementById('upload-zone').classList.add('dragover'); }
+function uzDragLeave() { document.getElementById('upload-zone').classList.remove('dragover'); }
+function uzDrop(e) { e.preventDefault(); uzDragLeave(); handleFileSelect(e.dataTransfer.files); }
+
+async function handleFileSelect(files) {
+  const list = document.getElementById('upload-list');
+  if (!files||!files.length) return;
+  for (const file of files) {
+    const li = document.createElement('div');
+    li.style.cssText = 'padding:6px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;';
+    li.innerHTML = `<span style="flex:1">${escHtml(file.name)}</span><span id="up-stat-${escHtml(file.name)}" style="color:var(--amber)">⋯ uploading</span>`;
+    list.appendChild(li);
+    try {
+      await uploadFile(file, state.prefix + file.name);
+      document.getElementById(`up-stat-${file.name}`).textContent = '✓ done';
+      document.getElementById(`up-stat-${file.name}`).style.color = 'var(--green)';
+    } catch(e) {
+      const el = document.getElementById(`up-stat-${file.name}`);
+      if (el) { el.textContent = '✕ failed'; el.style.color = 'var(--red)'; }
+    }
+  }
+  setTimeout(()=>{ closeModal(); navTo(state.prefix); }, 500);
+}
+
+async function uploadFile(file, key) {
+  if (state.mode === 'b2native') {
+    // Get upload URL
+    const urlRes = await fetch(`${state.apiUrl}/b2api/v3/b2_get_upload_url`, {
+      method: 'POST',
+      headers: { Authorization: state.authToken, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ bucketId: state.bucketId })
+    });
+    if (!urlRes.ok) { const e = await urlRes.json(); throw new Error(e.message); }
+    const { uploadUrl, authorizationToken } = await urlRes.json();
+
+    const buf = await file.arrayBuffer();
+    const hash = buf2hex(new Uint8Array(await crypto.subtle.digest('SHA-1', buf)));
+
+    const upRes = await fetch(uploadUrl, {
+      method: 'POST',
+      headers: {
+        Authorization: authorizationToken,
+        'X-Bz-File-Name': encodeURIComponent(key),
+        'Content-Type': file.type || 'application/octet-stream',
+        'Content-Length': String(file.size),
+        'X-Bz-Content-Sha1': hash
+      },
+      body: buf
+    });
+    if (!upRes.ok) { const e = await upRes.json(); throw new Error(e.message); }
+  } else {
+    // S3 PUT
+    const endpoint = state.s3endpoint.replace(/\/$/, '');
+    const amzDate = new Date().toISOString().replace(/[:\-]|\.\d{3}/g,'');
+    const dateStamp = amzDate.slice(0,8);
+    const regionMatch = endpoint.match(/s3\.([a-z0-9-]+)\.backblazeb2\.com/);
+    const region = regionMatch ? regionMatch[1] : 'us-east-1';
+
+    const buf = await file.arrayBuffer();
+    const payloadHash = buf2hex(new Uint8Array(await crypto.subtle.digest('SHA-256', buf)));
+    const host = new URL(endpoint).hostname;
+    const pathname = `/${state.bucket}/${key}`;
+    const canonicalHeaders = `content-type:${file.type||'application/octet-stream'}\nhost:${host}\nx-amz-content-sha256:${payloadHash}\nx-amz-date:${amzDate}\n`;
+    const signedHeaders = 'content-type;host;x-amz-content-sha256;x-amz-date';
+    const canonicalRequest = ['PUT', pathname, '', canonicalHeaders, signedHeaders, payloadHash].join('\n');
+    const credScope = `${dateStamp}/${region}/s3/aws4_request`;
+    const strToSign = `AWS4-HMAC-SHA256\n${amzDate}\n${credScope}\n${await sha256hex(canonicalRequest)}`;
+    const sigKey = await getSigningKey(state.s3secret, dateStamp, region, 's3');
+    const sig = buf2hex(await hmacSHA256(sigKey, strToSign));
+    const auth = `AWS4-HMAC-SHA256 Credential=${state.s3keyId}/${credScope}, SignedHeaders=${signedHeaders}, Signature=${sig}`;
+
+    const res = await fetch(`${endpoint}${pathname}`, {
+      method: 'PUT',
+      headers: {
+        Authorization: auth,
+        'x-amz-date': amzDate,
+        'x-amz-content-sha256': payloadHash,
+        'Content-Type': file.type||'application/octet-stream'
+      },
+      body: buf
+    });
+    if (!res.ok) throw new Error(`Upload failed: ${res.status}`);
+  }
+  toast(`Uploaded ${file.name}`, 'ok');
+}
+
+/* ────────────────────────────────
+   SETTINGS SHORTCUT
+──────────────────────────────── */
+function openSettings() {
+  document.getElementById('creds-panel').scrollIntoView({behavior:'smooth'});
+}
+
+/* ────────────────────────────────
+   UTILS
+──────────────────────────────── */
+function escHtml(s='') { return String(s).replace(/&/g,'&').replace(/</g,'<').replace(/>/g,'>').replace(/"/g,'&quot;'); }
+function escAttr(s='') { return String(s).replace(/'/g,"\\'").replace(/"/g,'&quot;'); }
+
+// Keyboard nav
+document.addEventListener('keydown', e=>{
+  if (e.key==='Escape') closeModal();
+  if ((e.ctrlKey||e.metaKey) && e.key==='r') { e.preventDefault(); refreshFiles(); }
+});
+
+// Load saved creds from sessionStorage
+(function() {
+  const saved = sessionStorage.getItem('b2vault_creds');
+  if (saved) {
+    try {
+      const c = JSON.parse(saved);
+      if (c.keyId) document.getElementById('keyId').value = c.keyId;
+      if (c.bucket) document.getElementById('bucket').value = c.bucket;
+    } catch{}
+  }
+})();
+
+// Save keyId & bucket on input (not secret)
+document.getElementById('keyId').addEventListener('input', savePartialCreds);
+document.getElementById('bucket').addEventListener('input', savePartialCreds);
+function savePartialCreds() {
+  sessionStorage.setItem('b2vault_creds', JSON.stringify({
+    keyId: document.getElementById('keyId').value,
+    bucket: document.getElementById('bucket').value
+  }));
+}
+</script>
+</body>
+</html>
