@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔗 URL Bypass Tool</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background-color: #0f1419;
+            color: #e1e7ef;
+            line-height: 1.6;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #2a3441;
+        }
+        
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            color: #7bb7fa;
+        }
+        
+        .subtitle {
+            color: #8b949e;
+            font-size: 1.1rem;
+        }
+        
+        .card {
+            background-color: #161b22;
+            border-radius: 10px;
+            padding: 25px;
+            margin-bottom: 25px;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
+            border: 1px solid #2a3441;
+        }
+        
+        h2 {
+            color: #7bb7fa;
+            margin-bottom: 15px;
+            font-size: 1.5rem;
+        }
+        
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        textarea {
+            background-color: #0d1117;
+            border: 1px solid #2a3441;
+            border-radius: 8px;
+            color: #e1e7ef;
+            padding: 15px;
+            font-size: 1rem;
+            resize: vertical;
+            min-height: 120px;
+            transition: border-color 0.3s;
+        }
+        
+        textarea:focus {
+            outline: none;
+            border-color: #7bb7fa;
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        
+        button {
+            background-color: #238636;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            padding: 12px 20px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.3s, transform 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        button:hover {
+            background-color: #2ea043;
+            transform: translateY(-2px);
+        }
+        
+        button:active {
+            transform: translateY(0);
+        }
+        
+        #clearBtn {
+            background-color: #da3633;
+        }
+        
+        #clearBtn:hover {
+            background-color: #f85149;
+        }
+        
+        #copyBtn {
+            background-color: #8957e5;
+        }
+        
+        #copyBtn:hover {
+            background-color: #9e6cf0;
+        }
+        
+        .result-container {
+            display: none;
+            margin-top: 20px;
+            animation: fadeIn 0.5s ease-in-out;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        .result-box {
+            background-color: #0d1117;
+            border: 1px solid #2a3441;
+            border-radius: 8px;
+            padding: 15px;
+            word-break: break-all;
+            position: relative;
+        }
+        
+        .result-label {
+            font-size: 0.9rem;
+            color: #8b949e;
+            margin-bottom: 8px;
+        }
+        
+        .result-text {
+            color: #7bb7fa;
+            font-size: 1rem;
+        }
+        
+        .info-box {
+            background-color: #0d1117;
+            border-left: 4px solid #8957e5;
+            padding: 15px;
+            margin-top: 20px;
+            border-radius: 0 6px 6px 0;
+        }
+        
+        .info-title {
+            color: #8957e5;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+        
+        .supported-list {
+            list-style-type: none;
+            margin-top: 10px;
+        }
+        
+        .supported-list li {
+            padding: 5px 0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .emoji {
+            font-size: 1.2rem;
+        }
+        
+        .status {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            margin-left: 10px;
+        }
+        
+        .status-success {
+            background-color: rgba(35, 134, 54, 0.2);
+            color: #7ee787;
+        }
+        
+        .status-error {
+            background-color: rgba(218, 54, 51, 0.2);
+            color: #ff7b72;
+        }
+        
+        .status-info {
+            background-color: rgba(137, 87, 229, 0.2);
+            color: #d2a8ff;
+        }
+        
+        footer {
+            text-align: center;
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #2a3441;
+            color: #8b949e;
+            font-size: 0.9rem;
+        }
+        
+        .loader {
+            display: none;
+            border: 3px solid #2a3441;
+            border-top: 3px solid #7bb7fa;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .success-emoji {
+            display: none;
+            font-size: 2rem;
+            text-align: center;
+            margin: 10px 0;
+        }
+        
+        @media (max-width: 600px) {
+            .container {
+                padding: 10px;
+            }
+            
+            h1 {
+                font-size: 2rem;
+            }
+            
+            .button-group {
+                flex-direction: column;
+            }
+            
+            button {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🔗 URL Bypass Tool</h1>
+            <p class="subtitle">Bypass Admaven, Linkvertise, and Lootlink URLs with ease</p>
+        </header>
+        
+        <main>
+            <div class="card">
+                <h2>🔍 Enter URLs to Bypass</h2>
+                <div class="input-group">
+                    <textarea id="urlInput" placeholder="Paste your URL(s) here, one per line..."></textarea>
+                    
+                    <div class="button-group">
+                        <button id="bypassBtn">
+                            <span class="emoji">🚀</span> Bypass URLs
+                        </button>
+                        <button id="clearBtn">
+                            <span class="emoji">🗑️</span> Clear
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="loader" id="loader"></div>
+                <div class="success-emoji" id="successEmoji">✅</div>
+                
+                <div class="result-container" id="resultContainer">
+                    <h2>📋 Results</h2>
+                    <div class="result-box">
+                        <div class="result-label">Bypassed URLs:</div>
+                        <div class="result-text" id="resultText"></div>
+                    </div>
+                    
+                    <div class="button-group" style="margin-top: 15px;">
+                        <button id="copyBtn">
+                            <span class="emoji">📋</span> Copy Results
+                        </button>
+                        <button id="openAllBtn">
+                            <span class="emoji">🌐</span> Open All in New Tabs
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card">
+                <h2>ℹ️ How It Works</h2>
+                <div class="info-box">
+                    <div class="info-title">🔧 Supported Services</div>
+                    <ul class="supported-list">
+                        <li><span class="emoji">🔓</span> Admaven URLs</li>
+                        <li><span class="emoji">🔗</span> Linkvertise URLs</li>
+                        <li><span class="emoji">🎮</span> Lootlink URLs</li>
+                    </ul>
+                    
+                    <div class="info-title" style="margin-top: 20px;">⚡ How it works</div>
+                    <p>This tool automatically detects the type of URL and applies the appropriate bypass method:</p>
+                    <ul class="supported-list">
+                        <li><span class="emoji">🔍</span> For Linkvertise URLs with "r=" parameter: decodes the Base64 value</li>
+                        <li><span class="emoji">🔧</span> For other supported URLs: uses the bypass API</li>
+                    </ul>
+                </div>
+            </div>
+        </main>
+        
+        <footer>
+            <p>Made with <span class="emoji">❤️</span> | Tool for educational purposes only</p>
+        </footer>
+    </div>
+
+    <script>
+        // DOM Elements
+        const urlInput = document.getElementById('urlInput');
+        const bypassBtn = document.getElementById('bypassBtn');
+        const clearBtn = document.getElementById('clearBtn');
+        const copyBtn = document.getElementById('copyBtn');
+        const openAllBtn = document.getElementById('openAllBtn');
+        const resultContainer = document.getElementById('resultContainer');
+        const resultText = document.getElementById('resultText');
+        const loader = document.getElementById('loader');
+        const successEmoji = document.getElementById('successEmoji');
+        
+        // Regex patterns from the Python code
+        const admavenRegex = /^https:\/\/((bleleadersto|tonordersitye|daughablelea|mdlinkshub)\.com)\/s\?(?!.*f933e7ff).*$/;
+        const linkvertiseRegex = /^https:\/\/linkvertise\.com\/.+$/;
+        const lootlinkRegex = /^(https?:\/\/)(loot-link\.com|loot-links\.com|lootlink\.org|lootlinks\.co|lootdest\.(info|org|com)|links-loot\.com|linksloot\.net)\/s\?.*$/;
+        
+        // Helper function to redirect (just log in this case)
+        function redirect(url) {
+            console.log(`[Redirect] ${url}`);
+            return url;
+        }
+        
+        // Main bypass function (adapted from Python)
+        function bypassUrl(url) {
+            // Replace link-to.net with linkvertise.com
+            url = url.replace("https://link-to.net/", "https://linkvertise.com/");
+            
+            // --- Linkvertise easy case: "?r=<Base64>"
+            if (linkvertiseRegex.test(url) && url.includes("r=")) {
+                try {
+                    const urlObj = new URL(url);
+                    const rVal = urlObj.searchParams.get("r");
+                    if (rVal) {
+                        // decode base64
+                        const decoded = atob(rVal);
+                        return redirect(decoded);
+                    }
+                } catch (e) {
+                    console.log("Base64 decode failed:", e);
+                }
+            }
+            
+            // --- Hard case: Admaven, Linkvertise, Lootlink using bypass API
+            if (admavenRegex.test(url) || linkvertiseRegex.test(url) || lootlinkRegex.test(url)) {
+                const final = `https://adbypass.org/bypass?bypass=${encodeURIComponent(url)}`;
+                return redirect(final);
+            }
+            
+            return null;
+        }
+        
+        // Process multiple URLs
+        function processUrls(urls) {
+            const results = [];
+            
+            for (const url of urls) {
+                const trimmedUrl = url.trim();
+                if (!trimmedUrl) continue;
+                
+                try {
+                    const result = bypassUrl(trimmedUrl);
+                    if (result) {
+                        results.push({
+                            original: trimmedUrl,
+                            bypassed: result,
+                            status: 'success'
+                        });
+                    } else {
+                        results.push({
+                            original: trimmedUrl,
+                            bypassed: 'URL does not match bypass patterns.',
+                            status: 'error'
+                        });
+                    }
+                } catch (error) {
+                    results.push({
+                        original: trimmedUrl,
+                        bypassed: `Error processing URL: ${error.message}`,
+                        status: 'error'
+                    });
+                }
+            }
+            
+            return results;
+        }
+        
+        // Format results for display
+        function formatResults(results) {
+            let output = '';
+            
+            results.forEach((result, index) => {
+                const statusClass = result.status === 'success' ? 'status-success' : 'status-error';
+                const statusText = result.status === 'success' ? 'Success' : 'Failed';
+                
+                output += `<div style="margin-bottom: 15px; padding-bottom: 15px; border-bottom: ${index < results.length - 1 ? '1px solid #2a3441' : 'none'}">
+                    <div><strong>Original:</strong> ${result.original}</div>
+                    <div style="margin-top: 5px;"><strong>Bypassed:</strong> ${result.bypassed}</div>
+                    <span class="status ${statusClass}">${statusText}</span>
+                </div>`;
+            });
+            
+            return output;
+        }
+        
+        // Event Listeners
+        bypassBtn.addEventListener('click', async () => {
+            const urls = urlInput.value.split('\n').filter(url => url.trim());
+            
+            if (urls.length === 0) {
+                alert('Please enter at least one URL');
+                return;
+            }
+            
+            // Show loader and hide previous results
+            loader.style.display = 'block';
+            successEmoji.style.display = 'none';
+            resultContainer.style.display = 'none';
+            
+            // Simulate processing time (for better UX)
+            setTimeout(() => {
+                const results = processUrls(urls);
+                
+                // Display results
+                resultText.innerHTML = formatResults(results);
+                resultContainer.style.display = 'block';
+                loader.style.display = 'none';
+                successEmoji.style.display = 'block';
+                
+                // Scroll to results
+                resultContainer.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }, 500);
+        });
+        
+        clearBtn.addEventListener('click', () => {
+            urlInput.value = '';
+            resultContainer.style.display = 'none';
+            successEmoji.style.display = 'none';
+            urlInput.focus();
+        });
+        
+        copyBtn.addEventListener('click', () => {
+            const resultsText = Array.from(resultText.querySelectorAll('div'))
+                .map(div => {
+                    const lines = div.textContent.split('\n');
+                    return lines.map(line => line.trim()).filter(line => line).join('\n');
+                })
+                .join('\n\n');
+            
+            navigator.clipboard.writeText(resultsText)
+                .then(() => {
+                    const originalText = copyBtn.innerHTML;
+                    copyBtn.innerHTML = '<span class="emoji">✅</span> Copied!';
+                    setTimeout(() => {
+                        copyBtn.innerHTML = originalText;
+                    }, 2000);
+                })
+                .catch(err => {
+                    console.error('Failed to copy: ', err);
+                    alert('Failed to copy results to clipboard');
+                });
+        });
+        
+        openAllBtn.addEventListener('click', () => {
+            const results = resultText.querySelectorAll('div');
+            const urls = [];
+            
+            results.forEach(div => {
+                const text = div.textContent;
+                const lines = text.split('\n');
+                if (lines.length > 1) {
+                    const urlLine = lines.find(line => line.includes('Bypassed:'));
+                    if (urlLine) {
+                        const url = urlLine.replace('Bypassed:', '').trim();
+                        if (url.startsWith('http')) {
+                            urls.push(url);
+                        }
+                    }
+                }
+            });
+            
+            if (urls.length === 0) {
+                alert('No valid URLs to open');
+                return;
+            }
+            
+            // Ask for confirmation before opening multiple tabs
+            if (confirm(`Do you want to open ${urls.length} URL(s) in new tabs?`)) {
+                urls.forEach(url => {
+                    window.open(url, '_blank');
+                });
+            }
+        });
+        
+        // Example URLs for testing
+        document.addEventListener('DOMContentLoaded', () => {
+            const exampleUrls = [
+                'https://link-to.net/967632/465.19640895506944/dynamic?r=aHR0cHM6Ly9yZW50cnkuY28vaDNoZHQ5Z3g=',
+                'https://linkvertise.com/12345/example',
+                'https://bleleadersto.com/s?param=value'
+            ];
+            
+            // Pre-fill with example URLs for testing
+            urlInput.value = exampleUrls.join('\n');
+        });
+    </script>
+</body>
+</html>

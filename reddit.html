@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>My Reddit Media</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+body{margin:0;background:#0f0f0f;color:#fff;font-family:system-ui}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;padding:10px}
+.card{background:#181818;border-radius:10px;overflow:hidden}
+.card img,.card video{width:100%}
+.download{display:block;background:#ff4500;text-align:center;color:#fff;padding:8px;text-decoration:none}
+.loader{text-align:center;color:#777;padding:20px}
+</style>
+</head>
+<body>
+
+<div class="grid" id="grid"></div>
+<div class="loader" id="loader">Loading…</div>
+
+<script>
+let after="";
+
+window.onload=load;
+window.onscroll=()=>{if(innerHeight+scrollY>=document.body.offsetHeight-600)load()}
+
+async function load(){
+ let r = await fetch("http://127.0.0.1:5000/feed?after="+after);
+ let j = await r.json();
+ after=j.after||"";
+
+ for(let i of j.items){
+   add(i.url, i.type=="video");
+ }
+}
+
+function add(url,isVideo){
+ let c=document.createElement("div");
+ c.className="card";
+ c.innerHTML=(isVideo?`<video src="${url}" controls></video>`:`<img src="${url}">`)
+ + `<a class="download" href="${url}" download>Download</a>`;
+ grid.appendChild(c);
+}
+</script>
+</body>
+</html>

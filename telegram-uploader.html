@@ -1,0 +1,956 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Telegram Bulk Uploader</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 30px;
+            animation: fadeIn 0.5s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+
+        header h1 {
+            font-size: 2.5em;
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+
+        header p {
+            color: #666;
+            font-size: 1.1em;
+        }
+
+        .config-section {
+            background: #f7fafc;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+        }
+
+        .config-section h3 {
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+
+        .config-section.configured {
+            background: #c6f6d5;
+            border: 2px solid #48bb78;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #4a5568;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 1em;
+            transition: border-color 0.3s;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .form-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .upload-section {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .file-input-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .file-count {
+            color: #666;
+            font-size: 0.95em;
+        }
+
+        button {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5568d3;
+        }
+
+        .btn-success {
+            background: #48bb78;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #38a169;
+        }
+
+        .btn-danger {
+            background: #f56565;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #e53e3e;
+        }
+
+        .btn-secondary {
+            background: #718096;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #4a5568;
+        }
+
+        .btn-small {
+            font-size: 0.85em;
+            padding: 8px 16px;
+        }
+
+        .stats-section {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+            color: white;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .stat-label {
+            font-size: 0.9em;
+            opacity: 0.9;
+            margin-bottom: 8px;
+        }
+
+        .stat-value {
+            font-size: 2em;
+            font-weight: bold;
+        }
+
+        .progress-section {
+            margin-bottom: 30px;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 30px;
+            background: #e2e8f0;
+            border-radius: 15px;
+            overflow: hidden;
+            margin-bottom: 10px;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #48bb78 0%, #38a169 100%);
+            width: 0%;
+            transition: width 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 0.85em;
+        }
+
+        .progress-text {
+            text-align: center;
+            color: #666;
+            font-size: 0.95em;
+        }
+
+        .files-section {
+            max-height: 500px;
+            overflow-y: auto;
+            padding: 10px;
+            background: #f7fafc;
+            border-radius: 12px;
+        }
+
+        .files-section::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .files-section::-webkit-scrollbar-track {
+            background: #e2e8f0;
+            border-radius: 4px;
+        }
+
+        .files-section::-webkit-scrollbar-thumb {
+            background: #cbd5e0;
+            border-radius: 4px;
+        }
+
+        .files-section::-webkit-scrollbar-thumb:hover {
+            background: #a0aec0;
+        }
+
+        .file-item {
+            background: white;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            transition: all 0.3s ease;
+        }
+
+        .file-item:hover {
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .file-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex: 1;
+            min-width: 0;
+        }
+
+        .file-icon {
+            font-size: 1.5em;
+            flex-shrink: 0;
+        }
+
+        .file-details {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .file-name {
+            font-weight: 600;
+            color: #2d3748;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            margin-bottom: 4px;
+        }
+
+        .file-size {
+            font-size: 0.85em;
+            color: #718096;
+        }
+
+        .file-status {
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 0.85em;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .status-pending {
+            background: #e2e8f0;
+            color: #4a5568;
+        }
+
+        .status-uploading {
+            background: #bee3f8;
+            color: #2c5282;
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        .status-success {
+            background: #c6f6d5;
+            color: #22543d;
+        }
+
+        .status-failed {
+            background: #fed7d7;
+            color: #742a2a;
+        }
+
+        .status-retrying {
+            background: #feebc8;
+            color: #7c2d12;
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.6;
+            }
+        }
+
+        .alert {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .alert-info {
+            background: #bee3f8;
+            color: #2c5282;
+            border: 1px solid #90cdf4;
+        }
+
+        .alert-warning {
+            background: #feebc8;
+            color: #7c2d12;
+            border: 1px solid #fbd38d;
+        }
+
+        .alert-success {
+            background: #c6f6d5;
+            color: #22543d;
+            border: 1px solid #9ae6b4;
+        }
+
+        /* Mobile Responsive */
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px;
+                border-radius: 15px;
+            }
+
+            header h1 {
+                font-size: 1.8em;
+            }
+
+            header p {
+                font-size: 1em;
+            }
+
+            .upload-section {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .file-input-wrapper {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            button {
+                width: 100%;
+                padding: 14px;
+            }
+
+            .form-actions button {
+                flex: 1;
+            }
+
+            .stats-section {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .stat-value {
+                font-size: 1.5em;
+            }
+
+            .file-item {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
+
+            .file-status {
+                align-self: flex-start;
+            }
+
+            .files-section {
+                max-height: 400px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            body {
+                padding: 10px;
+            }
+
+            .container {
+                padding: 15px;
+            }
+
+            header h1 {
+                font-size: 1.5em;
+            }
+
+            .stats-section {
+                grid-template-columns: 1fr;
+                gap: 10px;
+            }
+
+            .stat-card {
+                padding: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📤 Telegram Bulk Uploader</h1>
+            <p>Upload images and videos to your Telegram channel</p>
+        </header>
+
+        <!-- Configuration Section -->
+        <div class="config-section" id="configSection">
+            <h3>⚙️ Configuration</h3>
+            <div class="form-group">
+                <label for="botToken">Bot Token:</label>
+                <input 
+                    type="password" 
+                    id="botToken" 
+                    placeholder="123456789:ABCdefGHIjklMNOpqrsTUVwxyz"
+                    autocomplete="off"
+                >
+            </div>
+            <div class="form-group">
+                <label for="chatId">Channel ID or Username:</label>
+                <input 
+                    type="text" 
+                    id="chatId" 
+                    placeholder="@your_channel or -1001234567890"
+                    autocomplete="off"
+                >
+            </div>
+            <div class="form-actions">
+                <button class="btn-success" onclick="saveConfig()">💾 Save Configuration</button>
+                <button class="btn-secondary btn-small" onclick="togglePasswordVisibility()">👁️ Show/Hide Token</button>
+                <button class="btn-danger btn-small" onclick="clearConfig()">🗑️ Clear Config</button>
+            </div>
+        </div>
+
+        <div id="alertContainer"></div>
+
+        <div class="upload-section">
+            <div class="file-input-wrapper">
+                <input 
+                    type="file" 
+                    id="fileInput" 
+                    multiple 
+                    accept="image/*,video/*"
+                    style="display: none;"
+                >
+                <button class="btn-primary" onclick="document.getElementById('fileInput').click()">
+                    📁 Select Files
+                </button>
+                <span id="fileCount" class="file-count">No files selected</span>
+            </div>
+
+            <button id="uploadBtn" class="btn-success" disabled onclick="startUpload()">
+                🚀 Start Upload
+            </button>
+
+            <button id="clearBtn" class="btn-danger" style="display: none;" onclick="clearFiles()">
+                🗑️ Clear All
+            </button>
+        </div>
+
+        <div class="stats-section" id="statsSection" style="display: none;">
+            <div class="stat-card">
+                <div class="stat-label">Total Files</div>
+                <div class="stat-value" id="totalFiles">0</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Uploaded</div>
+                <div class="stat-value" id="uploadedFiles">0</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Failed</div>
+                <div class="stat-value" id="failedFiles">0</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Progress</div>
+                <div class="stat-value" id="progressPercent">0%</div>
+            </div>
+        </div>
+
+        <div class="progress-section" id="progressSection" style="display: none;">
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+            <div class="progress-text" id="progressText">Ready to upload</div>
+        </div>
+
+        <div class="files-section" id="filesSection"></div>
+    </div>
+
+    <script>
+        // Configuration
+        const CONFIG = {
+            MAX_PARALLEL_UPLOADS: 3,
+            RETRY_ATTEMPTS: 3,
+            RETRY_DELAY: 2000,
+            PHOTO_SIZE_LIMIT: 10 * 1024 * 1024,
+            VIDEO_SIZE_LIMIT: 50 * 1024 * 1024,
+            DELAY_BETWEEN_UPLOADS: 100
+        };
+
+        // State
+        let botToken = '';
+        let chatId = '';
+        let selectedFiles = [];
+        let uploadQueue = [];
+        let isUploading = false;
+        let stats = {
+            total: 0,
+            uploaded: 0,
+            failed: 0
+        };
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            loadConfig();
+            setupEventListeners();
+        });
+
+        function setupEventListeners() {
+            document.getElementById('fileInput').addEventListener('change', handleFileSelect);
+        }
+
+        // Configuration Management
+        function saveConfig() {
+            const token = document.getElementById('botToken').value.trim();
+            const chat = document.getElementById('chatId').value.trim();
+
+            if (!token || !chat) {
+                showAlert('Please fill in both Bot Token and Channel ID', 'warning');
+                return;
+            }
+
+            botToken = token;
+            chatId = chat;
+
+            localStorage.setItem('telegram_bot_token', token);
+            localStorage.setItem('telegram_chat_id', chat);
+
+            document.getElementById('configSection').classList.add('configured');
+            showAlert('Configuration saved successfully! ✅', 'success');
+        }
+
+        function loadConfig() {
+            const savedToken = localStorage.getItem('telegram_bot_token');
+            const savedChat = localStorage.getItem('telegram_chat_id');
+
+            if (savedToken && savedChat) {
+                botToken = savedToken;
+                chatId = savedChat;
+                document.getElementById('botToken').value = savedToken;
+                document.getElementById('chatId').value = savedChat;
+                document.getElementById('configSection').classList.add('configured');
+            }
+        }
+
+        function clearConfig() {
+            if (confirm('Clear saved configuration?')) {
+                localStorage.removeItem('telegram_bot_token');
+                localStorage.removeItem('telegram_chat_id');
+                botToken = '';
+                chatId = '';
+                document.getElementById('botToken').value = '';
+                document.getElementById('chatId').value = '';
+                document.getElementById('configSection').classList.remove('configured');
+                showAlert('Configuration cleared', 'info');
+            }
+        }
+
+        function togglePasswordVisibility() {
+            const input = document.getElementById('botToken');
+            input.type = input.type === 'password' ? 'text' : 'password';
+        }
+
+        function showAlert(message, type = 'info') {
+            const container = document.getElementById('alertContainer');
+            const alert = document.createElement('div');
+            alert.className = `alert alert-${type}`;
+            alert.textContent = message;
+            container.innerHTML = '';
+            container.appendChild(alert);
+
+            setTimeout(() => {
+                alert.style.opacity = '0';
+                alert.style.transition = 'opacity 0.5s';
+                setTimeout(() => alert.remove(), 500);
+            }, 5000);
+        }
+
+        // File Selection
+        function handleFileSelect(e) {
+            const files = Array.from(e.target.files);
+            
+            if (files.length === 0) return;
+
+            selectedFiles = files.map((file, index) => ({
+                id: Date.now() + index,
+                file: file,
+                name: file.name,
+                size: file.size,
+                type: file.type,
+                status: 'pending',
+                retries: 0
+            }));
+
+            updateUI();
+            renderFiles();
+        }
+
+        function updateUI() {
+            const count = selectedFiles.length;
+            document.getElementById('fileCount').textContent = 
+                count > 0 ? `${count} file${count > 1 ? 's' : ''} selected` : 'No files selected';
+            
+            document.getElementById('uploadBtn').disabled = count === 0 || isUploading || !botToken || !chatId;
+            document.getElementById('clearBtn').style.display = count > 0 ? 'inline-block' : 'none';
+            
+            if (count > 0) {
+                document.getElementById('statsSection').style.display = 'grid';
+                updateStats();
+            }
+        }
+
+        function renderFiles() {
+            const section = document.getElementById('filesSection');
+            section.innerHTML = '';
+            
+            selectedFiles.forEach(fileObj => {
+                section.appendChild(createFileItem(fileObj));
+            });
+        }
+
+        function createFileItem(fileObj) {
+            const div = document.createElement('div');
+            div.className = 'file-item';
+            div.id = `file-${fileObj.id}`;
+
+            const icon = getFileIcon(fileObj.type);
+            const sizeText = formatFileSize(fileObj.size);
+            const statusClass = `status-${fileObj.status}`;
+            const statusText = getStatusText(fileObj.status);
+
+            div.innerHTML = `
+                <div class="file-info">
+                    <div class="file-icon">${icon}</div>
+                    <div class="file-details">
+                        <div class="file-name" title="${fileObj.name}">${fileObj.name}</div>
+                        <div class="file-size">${sizeText}</div>
+                    </div>
+                </div>
+                <div class="file-status ${statusClass}" id="status-${fileObj.id}">
+                    ${statusText}
+                </div>
+            `;
+
+            return div;
+        }
+
+        function getFileIcon(type) {
+            if (type.startsWith('image/')) return '🖼️';
+            if (type.startsWith('video/')) return '🎥';
+            return '📄';
+        }
+
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
+        }
+
+        function getStatusText(status) {
+            const statusMap = {
+                'pending': 'Pending',
+                'uploading': 'Uploading...',
+                'success': '✓ Uploaded',
+                'failed': '✗ Failed',
+                'retrying': 'Retrying...'
+            };
+            return statusMap[status] || status;
+        }
+
+        function updateFileStatus(fileId, status) {
+            const fileObj = selectedFiles.find(f => f.id === fileId);
+            if (fileObj) {
+                fileObj.status = status;
+                const statusElement = document.getElementById(`status-${fileId}`);
+                if (statusElement) {
+                    statusElement.className = `file-status status-${status}`;
+                    statusElement.textContent = getStatusText(status);
+                }
+            }
+        }
+
+        function updateStats() {
+            stats.total = selectedFiles.length;
+            stats.uploaded = selectedFiles.filter(f => f.status === 'success').length;
+            stats.failed = selectedFiles.filter(f => f.status === 'failed').length;
+
+            document.getElementById('totalFiles').textContent = stats.total;
+            document.getElementById('uploadedFiles').textContent = stats.uploaded;
+            document.getElementById('failedFiles').textContent = stats.failed;
+
+            const progress = stats.total > 0 ? Math.round((stats.uploaded / stats.total) * 100) : 0;
+            document.getElementById('progressPercent').textContent = progress + '%';
+            
+            const progressFill = document.getElementById('progressFill');
+            progressFill.style.width = progress + '%';
+            progressFill.textContent = progress + '%';
+
+            updateProgressText();
+        }
+
+        function updateProgressText() {
+            const progressText = document.getElementById('progressText');
+            if (isUploading) {
+                progressText.textContent = `Uploading: ${stats.uploaded}/${stats.total} completed`;
+            } else if (stats.uploaded === stats.total && stats.total > 0) {
+                progressText.textContent = `✓ All files uploaded successfully!`;
+            } else if (stats.failed > 0 && !isUploading) {
+                progressText.textContent = `Upload completed with ${stats.failed} failed`;
+            }
+        }
+
+        // Upload Functions
+        async function startUpload() {
+            if (!botToken || !chatId) {
+                showAlert('Please configure Bot Token and Channel ID first!', 'warning');
+                return;
+            }
+
+            if (selectedFiles.length === 0 || isUploading) return;
+
+            isUploading = true;
+            document.getElementById('uploadBtn').disabled = true;
+            document.getElementById('clearBtn').disabled = true;
+            document.getElementById('progressSection').style.display = 'block';
+            
+            stats = { total: selectedFiles.length, uploaded: 0, failed: 0 };
+            updateStats();
+
+            uploadQueue = [...selectedFiles];
+
+            const workers = [];
+            for (let i = 0; i < CONFIG.MAX_PARALLEL_UPLOADS; i++) {
+                workers.push(uploadWorker());
+            }
+
+            await Promise.all(workers);
+
+            isUploading = false;
+            document.getElementById('uploadBtn').disabled = false;
+            document.getElementById('clearBtn').disabled = false;
+            
+            updateStats();
+            
+            if (stats.failed === 0) {
+                showAlert(`✅ Successfully uploaded all ${stats.total} files!`, 'success');
+            } else {
+                showAlert(`⚠️ Upload completed: ${stats.uploaded} successful, ${stats.failed} failed`, 'warning');
+            }
+        }
+
+        async function uploadWorker() {
+            while (uploadQueue.length > 0) {
+                const fileObj = uploadQueue.shift();
+                if (!fileObj) break;
+
+                await uploadFile(fileObj);
+                await sleep(CONFIG.DELAY_BETWEEN_UPLOADS);
+            }
+        }
+
+        async function uploadFile(fileObj) {
+            let attempt = 0;
+            
+            while (attempt < CONFIG.RETRY_ATTEMPTS) {
+                try {
+                    updateFileStatus(fileObj.id, attempt === 0 ? 'uploading' : 'retrying');
+                    
+                    const uploadType = determineUploadType(fileObj);
+                    const result = await sendToTelegram(fileObj, uploadType);
+
+                    if (result.ok) {
+                        updateFileStatus(fileObj.id, 'success');
+                        stats.uploaded++;
+                        updateStats();
+                        return;
+                    } else {
+                        throw new Error(result.description || 'Upload failed');
+                    }
+                } catch (error) {
+                    console.error(`Upload attempt ${attempt + 1} failed for ${fileObj.name}:`, error);
+                    attempt++;
+                    
+                    if (attempt < CONFIG.RETRY_ATTEMPTS) {
+                        await sleep(CONFIG.RETRY_DELAY);
+                    }
+                }
+            }
+
+            updateFileStatus(fileObj.id, 'failed');
+            stats.failed++;
+            updateStats();
+        }
+
+        async function sendToTelegram(fileObj, method) {
+            const formData = new FormData();
+            formData.append('chat_id', chatId);
+            
+            let fieldName;
+            if (method === 'sendPhoto') {
+                fieldName = 'photo';
+            } else if (method === 'sendVideo') {
+                fieldName = 'video';
+                formData.append('supports_streaming', 'true');
+            } else {
+                fieldName = 'document';
+            }
+            
+            formData.append(fieldName, fileObj.file, fileObj.name);
+            formData.append('caption', fileObj.name);
+
+            const url = `https://api.telegram.org/bot${botToken}/${method}`;
+
+            const response = await fetch(url, {
+                method: 'POST',
+                body: formData
+            });
+
+            return await response.json();
+        }
+
+        function determineUploadType(fileObj) {
+            const { type, size } = fileObj;
+
+            if (type.startsWith('image/')) {
+                return size <= CONFIG.PHOTO_SIZE_LIMIT ? 'sendPhoto' : 'sendDocument';
+            } else if (type.startsWith('video/')) {
+                return size <= CONFIG.VIDEO_SIZE_LIMIT ? 'sendVideo' : 'sendDocument';
+            }
+            
+            return 'sendDocument';
+        }
+
+        function clearFiles() {
+            if (isUploading && !confirm('Upload in progress. Cancel it?')) {
+                return;
+            }
+
+            selectedFiles = [];
+            uploadQueue = [];
+            isUploading = false;
+            stats = { total: 0, uploaded: 0, failed: 0 };
+            
+            document.getElementById('fileInput').value = '';
+            document.getElementById('filesSection').innerHTML = '';
+            document.getElementById('statsSection').style.display = 'none';
+            document.getElementById('progressSection').style.display = 'none';
+            
+            updateUI();
+        }
+
+        function sleep(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+        window.addEventListener('beforeunload', (e) => {
+            if (isUploading) {
+                e.preventDefault();
+                e.returnValue = '';
+            }
+        });
+    </script>
+</body>
+</html>

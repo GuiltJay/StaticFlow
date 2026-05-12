@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Stream Dashboard</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+
+<style>
+:root {
+  --bg: #0b0f17;
+  --accent: linear-gradient(90deg,#00f5ff,#7c4dff);
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: "Inter", sans-serif;
+  background: var(--bg);
+  color: white;
+}
+
+/* HEADER */
+header {
+  padding: 25px;
+  text-align: center;
+  backdrop-filter: blur(20px);
+  background: rgba(255,255,255,0.03);
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+
+.search-box {
+  max-width: 700px;
+  margin: auto;
+  display: flex;
+  gap: 10px;
+}
+
+.search-box input {
+  flex: 1;
+  padding: 14px 18px;
+  border-radius: 50px;
+  border: none;
+  outline: none;
+  background: rgba(255,255,255,0.08);
+  color: white;
+}
+
+.search-box button {
+  padding: 14px 25px;
+  border-radius: 50px;
+  border: none;
+  background: var(--accent);
+  color: white;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* CONTAINER */
+.container {
+  padding: 30px;
+  max-width: 1400px;
+  margin: auto;
+}
+
+/* PLAYER */
+.player-wrapper {
+  position: relative;
+  width: 100%;
+  padding-top: 56.25%;
+  border-radius: 20px;
+  overflow: hidden;
+  margin-bottom: 40px;
+  background: black;
+}
+
+.player-wrapper iframe {
+  position: absolute;
+  top:0;
+  left:0;
+  width:100%;
+  height:100%;
+  border:none;
+}
+
+/* POSTER + SERVERS */
+.poster-card {
+  display: flex;
+  gap: 30px;
+  flex-wrap: wrap;
+  margin-bottom: 40px;
+}
+
+.poster-card img {
+  width: 280px;
+  border-radius: 18px;
+  box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+}
+
+/* SERVERS */
+.servers {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 20px;
+}
+
+.servers button {
+  padding: 10px 20px;
+  border-radius: 30px;
+  border: 1px solid rgba(255,255,255,0.1);
+  background: rgba(255,255,255,0.05);
+  color: white;
+  cursor: pointer;
+  transition: 0.3s;
+}
+
+.servers button.active,
+.servers button:hover {
+  background: var(--accent);
+}
+
+/* SCREENSHOTS */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill,minmax(200px,1fr));
+  gap: 15px;
+}
+
+.grid img {
+  width: 100%;
+  border-radius: 14px;
+  transition: 0.3s;
+  cursor: pointer;
+}
+
+.grid img:hover {
+  transform: scale(1.05);
+}
+
+/* TITLES */
+h2 {
+  font-weight: 700;
+  margin-bottom: 20px;
+  background: var(--accent);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+@media(max-width:768px){
+  .poster-card{
+    flex-direction: column;
+  }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="search-box">
+    <input id="urlInput" placeholder="Paste target URL..." />
+    <button onclick="fetchData()">Load</button>
+  </div>
+</header>
+
+<div class="container">
+
+  <div class="player-wrapper">
+    <iframe id="streamFrame" allowfullscreen></iframe>
+  </div>
+
+  <div class="poster-card">
+    <img id="poster" />
+    <div>
+      <h2>Stream Servers</h2>
+      <div id="servers" class="servers"></div>
+    </div>
+  </div>
+
+  <h2>Screenshots</h2>
+  <div id="screenshots" class="grid"></div>
+
+</div>
+
+<script>
+const API_BASE = "https://javguru.mrspidyxd.workers.dev/?url=";
+
+/* 🔥 Convert thumbnail links to full image */
+function convertImageUrl(url) {
+  return url
+    .replace("cdn.javnorth.com", "cdn.javmiku.com")
+    .replace("/thumbs", "")
+    .replace(/-\d+x\d+(\.jpg|\.png|\.webp)$/, "$1");
+}
+
+async function fetchData() {
+  const inputUrl = document.getElementById("urlInput").value;
+  if (!inputUrl) return alert("Enter URL");
+
+  try {
+    const res = await fetch(API_BASE + encodeURIComponent(inputUrl));
+    const data = await res.json();
+
+    document.getElementById("poster").src = convertImageUrl(data.poster || "");
+
+    renderScreenshots(data.screenshots || []);
+    renderServers(data.results || []);
+
+  } catch (err) {
+    alert("API Error");
+    console.error(err);
+  }
+}
+
+function renderScreenshots(images){
+  const container = document.getElementById("screenshots");
+  container.innerHTML = "";
+
+  images.forEach(img=>{
+    const converted = convertImageUrl(img);
+
+    const image = document.createElement("img");
+    image.src = converted;
+    image.onclick = ()=>window.open(converted);
+
+    container.appendChild(image);
+  });
+}
+
+function renderServers(servers){
+  const container = document.getElementById("servers");
+  container.innerHTML = "";
+
+  servers.forEach((server, index)=>{
+    const btn = document.createElement("button");
+    btn.innerText = server.server.toUpperCase();
+
+    btn.onclick = ()=>{
+      document.getElementById("streamFrame").src = server.url;
+      document.querySelectorAll(".servers button").forEach(b=>b.classList.remove("active"));
+      btn.classList.add("active");
+    };
+
+    container.appendChild(btn);
+
+    // Auto-load first server
+    if(index === 0){
+      document.getElementById("streamFrame").src = server.url;
+      btn.classList.add("active");
+    }
+  });
+}
+</script>
+
+</body>
+</html>

@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NO</title>
+
+  <!-- Hacker fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono&family=Space+Mono&family=IBM+Plex+Mono&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      background: #000;
+      color: #e6e6e6;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    body {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      overflow: hidden;
+    }
+
+    .wrapper {
+      max-width: 900px;
+      text-align: center;
+    }
+
+    .text {
+      font-size: clamp(1.4rem, 4vw, 2.8rem);
+      line-height: 1.5;
+      letter-spacing: 0.02em;
+      text-shadow: 0 0 6px rgba(0, 255, 150, 0.08);
+      transition: font-family 0.4s ease, opacity 0.3s ease;
+    }
+
+    .error {
+      color: #ff5555;
+    }
+
+    /* hacker caret */
+    .caret::after {
+      content: "_";
+      margin-left: 6px;
+      animation: blink 1.2s infinite;
+      opacity: 0.7;
+    }
+
+    @keyframes blink {
+      0%, 50%, 100% { opacity: 0; }
+      25%, 75% { opacity: 1; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="wrapper">
+    <div id="out" class="text caret"></div>
+  </div>
+
+  <script>
+    const API = "https://nas.mrspidyxd.workers.dev/no";
+    const el = document.getElementById("out");
+
+    const fonts = [
+      "'JetBrains Mono', monospace",
+      "'Space Mono', monospace",
+      "'IBM Plex Mono', monospace",
+      "'Share Tech Mono', monospace"
+    ];
+
+    function loadReason() {
+      fetch(API)
+        .then(res => res.json())
+        .then(data => {
+          // pick a new font ONLY when new reason arrives
+          const font =
+            fonts[Math.floor(Math.random() * fonts.length)];
+
+          el.style.opacity = "0.4";
+
+          setTimeout(() => {
+            el.style.fontFamily = font;
+            el.textContent = data.reason || "no.";
+            el.style.opacity = "1";
+          }, 150);
+        })
+        .catch(err => {
+          el.classList.add("error");
+          el.textContent = "no.";
+          console.error(err);
+        });
+    }
+
+    // Load once
+    loadReason();
+
+    // Optional: click/tap for a new NO
+    document.body.addEventListener("click", loadReason);
+  </script>
+
+</body>
+</html>

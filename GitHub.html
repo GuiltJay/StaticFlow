@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GitHub Dev Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        slate: { 850: '#151e2e' }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Custom scrollbar for the log window */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #0f172a; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #475569; }
+        .loader {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #3b82f6;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-200 min-h-screen font-sans selection:bg-blue-500 selection:text-white">
+
+    <!-- Auth Section -->
+    <div id="auth-section" class="flex flex-col items-center justify-center min-h-screen p-4">
+        <div class="w-full max-w-md bg-slate-900 p-8 rounded-xl border border-slate-800 shadow-2xl">
+            <h1 class="text-3xl font-bold mb-2 text-white flex items-center gap-2">
+                <svg class="w-8 h-8" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+                DevOps Dashboard
+            </h1>
+            <p class="text-slate-400 mb-6 text-sm">Manage workflows, git history, and secrets.</p>
+            
+            <label class="block text-xs font-semibold uppercase text-slate-500 mb-1">Personal Access Token</label>
+            <input type="password" id="token-input" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-4 py-3 mb-4 focus:ring-2 focus:ring-blue-600 focus:border-transparent outline-none transition-all placeholder-slate-600" placeholder="ghp_..." />
+            
+            <button id="connect-btn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 rounded-lg transition-colors flex justify-center items-center">
+                Connect
+            </button>
+            <p class="text-xs text-slate-500 mt-4 text-center">Required scopes: <code class="bg-slate-800 px-1 rounded">repo</code>, <code class="bg-slate-800 px-1 rounded">workflow</code></p>
+        </div>
+    </div>
+
+    <!-- Main Dashboard -->
+    <div id="dashboard-section" class="hidden max-w-7xl mx-auto p-6">
+        
+        <!-- Header -->
+        <header class="flex flex-col md:flex-row md:items-center justify-between mb-8 pb-6 border-b border-slate-800">
+            <div>
+                <h2 class="text-2xl font-bold text-white">Repository Controls</h2>
+                <div id="user-info" class="text-slate-400 text-sm mt-1"></div>
+            </div>
+            <button id="logout-btn" class="mt-4 md:mt-0 px-4 py-2 text-sm text-red-400 hover:bg-red-900/20 rounded border border-transparent hover:border-red-900/50 transition-all">
+                Disconnect
+            </button>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            
+            <!-- Left Sidebar: Controls & Logs -->
+            <div class="lg:col-span-4 space-y-6">
+                <!-- Repo Selector -->
+                <div class="bg-slate-900 p-5 rounded-xl border border-slate-800">
+                    <label class="block text-sm font-medium mb-2 text-slate-300">Target Repository</label>
+                    <select id="repo-select" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-600 outline-none">
+                        <option value="">Loading repositories...</option>
+                    </select>
+                </div>
+
+                <!-- Console Log -->
+                <div class="bg-slate-900 rounded-xl border border-slate-800 overflow-hidden flex flex-col h-[500px]">
+                    <div class="bg-slate-850 px-4 py-3 border-b border-slate-800 flex justify-between items-center">
+                        <span class="text-xs font-mono text-slate-400 uppercase tracking-widest">System Log</span>
+                        <button id="clear-logs" class="text-xs text-slate-500 hover:text-white">Clear</button>
+                    </div>
+                    <div id="console-output" class="flex-1 p-4 font-mono text-xs overflow-y-auto space-y-2 bg-slate-950">
+                        <div class="text-slate-500 italic">Waiting for input...</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Content: Actions -->
+            <div class="lg:col-span-8">
+                <div id="actions-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4 opacity-50 pointer-events-none transition-opacity">
+                    
+                    <!-- Card 1: Workflows -->
+                    <div class="bg-slate-900 p-6 rounded-xl border border-slate-800 hover:border-slate-700 transition-colors">
+                        <div class="flex items-start justify-between mb-4">
+                            <div>
+                                <h3 class="font-semibold text-lg text-white">Workflow Cleaner</h3>
+                                <p class="text-sm text-slate-400 mt-1">Delete all historical workflow runs to clean up Actions tab.</p>
+                            </div>
+                            <div class="p-2 bg-blue-900/30 text-blue-400 rounded-lg">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                            </div>
+                        </div>
+                        <button id="btn-clear-workflows" class="w-full py-2 px-4 bg-slate-800 hover:bg-slate-700 text-white rounded-lg border border-slate-700 transition-all flex justify-center items-center gap-2">
+                            Delete All Runs
+                        </button>
+                    </div>
+
+                    <!-- Card 2: History Reset -->
+                    <div class="bg-slate-900 p-6 rounded-xl border border-red-900/30 hover:border-red-900/60 transition-colors bg-gradient-to-br from-slate-900 to-red-950/10">
+                        <div class="flex items-start justify-between mb-4">
+                            <div>
+                                <h3 class="font-semibold text-lg text-white">Nuke History</h3>
+                                <p class="text-sm text-slate-400 mt-1">Squash entire history into 1 commit. <span class="text-red-400 font-bold">Destructive.</span></p>
+                            </div>
+                            <div class="p-2 bg-red-900/30 text-red-400 rounded-lg">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                            </div>
+                        </div>
+                        <button id="btn-reset-history" class="w-full py-2 px-4 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-all flex justify-center items-center gap-2">
+                            Reset to Initial Commit
+                        </button>
+                    </div>
+
+                    <!-- Card 3: Secrets -->
+                    <div class="bg-slate-900 p-6 rounded-xl border border-slate-800 hover:border-slate-700 transition-colors">
+                        <div class="flex items-start justify-between mb-4">
+                            <div>
+                                <h3 class="font-semibold text-lg text-white">Secrets Audit</h3>
+                                <p class="text-sm text-slate-400 mt-1">Check how many secrets and variables are defined.</p>
+                            </div>
+                            <div class="p-2 bg-emerald-900/30 text-emerald-400 rounded-lg">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"></path></svg>
+                            </div>
+                        </div>
+                        <div class="flex gap-2">
+                            <button id="btn-check-secrets" class="flex-1 py-2 px-4 bg-slate-800 hover:bg-slate-700 text-white rounded-lg border border-slate-700 transition-all">
+                                Audit
+                            </button>
+                        </div>
+                        <div id="secrets-result" class="mt-3 text-sm text-center hidden"></div>
+                    </div>
+
+                    <!-- Card 4: Branch Protection -->
+                    <div class="bg-slate-900 p-6 rounded-xl border border-slate-800 hover:border-slate-700 transition-colors">
+                        <div class="flex items-start justify-between mb-4">
+                            <div>
+                                <h3 class="font-semibold text-lg text-white">Protection Rules</h3>
+                                <p class="text-sm text-slate-400 mt-1">Quick access to branch protection settings.</p>
+                            </div>
+                            <div class="p-2 bg-purple-900/30 text-purple-400 rounded-lg">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
+                            </div>
+                        </div>
+                        <a id="link-protection" href="#" target="_blank" class="block w-full text-center py-2 px-4 bg-slate-800 hover:bg-slate-700 text-white rounded-lg border border-slate-700 transition-all">
+                            Open Settings
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Logic Script -->
+    <script type="module">
+        import { Octokit } from "https://esm.sh/@octokit/rest";
+
+        // State
+        let octokit = null;
+        let currentUser = null;
+        let repositories = [];
+        let selectedRepo = null;
+
+        // UI References
+        const authSection = document.getElementById('auth-section');
+        const dashboardSection = document.getElementById('dashboard-section');
+        const tokenInput = document.getElementById('token-input');
+        const connectBtn = document.getElementById('connect-btn');
+        const logoutBtn = document.getElementById('logout-btn');
+        const repoSelect = document.getElementById('repo-select');
+        const actionsGrid = document.getElementById('actions-grid');
+        const consoleOutput = document.getElementById('console-output');
+        const userInfo = document.getElementById('user-info');
+        const linkProtection = document.getElementById('link-protection');
+
+        // Logging Helper
+        function log(msg, type = 'info') {
+            const div = document.createElement('div');
+            const time = new Date().toLocaleTimeString();
+            div.className = "border-l-2 pl-2 py-1";
+            
+            if (type === 'error') {
+                div.className += " border-red-500 text-red-400";
+            } else if (type === 'success') {
+                div.className += " border-green-500 text-green-400";
+            } else if (type === 'warn') {
+                div.className += " border-yellow-500 text-yellow-400";
+            } else {
+                div.className += " border-blue-500 text-slate-300";
+            }
+            
+            div.innerHTML = `<span class="opacity-50 text-[10px] mr-2">${time}</span> ${msg}`;
+            consoleOutput.insertBefore(div, consoleOutput.firstChild);
+        }
+
+        document.getElementById('clear-logs').onclick = () => consoleOutput.innerHTML = '';
+
+        // Authentication
+        async function authenticate(token) {
+            connectBtn.innerText = 'Connecting...';
+            connectBtn.disabled = true;
+
+            try {
+                octokit = new Octokit({ auth: token });
+                const { data } = await octokit.users.getAuthenticated();
+                currentUser = data;
+                
+                log(`Authenticated as ${currentUser.login}`, 'success');
+                localStorage.setItem('gh_token', token);
+                
+                // Switch View
+                authSection.classList.add('hidden');
+                dashboardSection.classList.remove('hidden');
+                userInfo.innerText = `Logged in as ${currentUser.login}`;
+                
+                await fetchRepos();
+
+            } catch (error) {
+                log(`Authentication Failed: ${error.message}`, 'error');
+                localStorage.removeItem('gh_token');
+            } finally {
+                connectBtn.innerText = 'Connect';
+                connectBtn.disabled = false;
+            }
+        }
+
+        async function fetchRepos() {
+            log('Fetching repositories...');
+            repoSelect.innerHTML = '<option>Loading...</option>';
+            
+            try {
+                const { data } = await octokit.repos.listForAuthenticatedUser({
+                    sort: 'updated',
+                    per_page: 100,
+                    type: 'owner' // Only show repos owned by user
+                });
+                repositories = data;
+                
+                repoSelect.innerHTML = '<option value="">-- Select Repository --</option>';
+                repositories.forEach(repo => {
+                    const opt = document.createElement('option');
+                    opt.value = repo.id;
+                    opt.innerText = repo.full_name + (repo.private ? ' (Private)' : '');
+                    repoSelect.appendChild(opt);
+                });
+                log(`Loaded ${repositories.length} repositories.`, 'success');
+            } catch (error) {
+                log(`Failed to fetch repos: ${error.message}`, 'error');
+            }
+        }
+
+        // Event Listeners
+        connectBtn.onclick = () => authenticate(tokenInput.value);
+        logoutBtn.onclick = () => {
+            localStorage.removeItem('gh_token');
+            location.reload();
+        };
+
+        // Auto-login if token exists
+        const savedToken = localStorage.getItem('gh_token');
+        if (savedToken) {
+            tokenInput.value = savedToken;
+            authenticate(savedToken);
+        }
+
+        // Repo Selection Change
+        repoSelect.onchange = (e) => {
+            const id = parseInt(e.target.value);
+            selectedRepo = repositories.find(r => r.id === id);
+            
+            if (selectedRepo) {
+                actionsGrid.classList.remove('opacity-50', 'pointer-events-none');
+                log(`Selected: ${selectedRepo.full_name}`);
+                linkProtection.href = `${selectedRepo.html_url}/settings/branches`;
+                document.getElementById('secrets-result').classList.add('hidden');
+            } else {
+                actionsGrid.classList.add('opacity-50', 'pointer-events-none');
+            }
+        };
+
+        // --- FEATURE: Delete Workflows ---
+        document.getElementById('btn-clear-workflows').onclick = async function() {
+            if (!selectedRepo) return;
+            const btn = this;
+            
+            if (!confirm(`Delete ALL workflow runs for ${selectedRepo.name}? This cannot be undone.`)) return;
+
+            btn.disabled = true;
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<span class="loader"></span> Processing...';
+
+            try {
+                const owner = selectedRepo.owner.login;
+                const repo = selectedRepo.name;
+                
+                log(`Fetching workflow runs for ${repo}...`);
+                const { data } = await octokit.actions.listWorkflowRunsForRepo({ owner, repo, per_page: 100 });
+                
+                const count = data.total_count;
+                if (count === 0) {
+                    log('No workflow runs found.', 'info');
+                } else {
+                    log(`Found ${count} runs. Starting deletion...`, 'warn');
+                    let deleted = 0;
+                    
+                    // Note: GitHub API pagination logic would be needed for >100 runs. 
+                    // Simple loop for the first page for this demo.
+                    for (const run of data.workflow_runs) {
+                        try {
+                            await octokit.actions.deleteWorkflowRun({ owner, repo, run_id: run.id });
+                            deleted++;
+                            if (deleted % 5 === 0) log(`Deleted ${deleted}/${count}...`);
+                        } catch (e) {
+                            log(`Failed to delete run ${run.id}`, 'error');
+                        }
+                    }
+                    log(`Operation complete. Deleted ${deleted} runs.`, 'success');
+                }
+            } catch (e) {
+                log(`Error: ${e.message}`, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+            }
+        };
+
+        // --- FEATURE: Nuke History ---
+        document.getElementById('btn-reset-history').onclick = async function() {
+            if (!selectedRepo) return;
+            const branch = selectedRepo.default_branch;
+            
+            const msg = `DANGER ZONE!\n\nThis will DELETE all commit history on branch '${branch}'.\nIt will force push a single commit containing the current files.\n\nType 'DELETE' to confirm.`;
+            if (prompt(msg) !== 'DELETE') return;
+
+            const btn = this;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loader"></span> Nuking...';
+
+            try {
+                const owner = selectedRepo.owner.login;
+                const repo = selectedRepo.name;
+
+                log(`Fetching ref for heads/${branch}...`);
+                const refData = await octokit.git.getRef({ owner, repo, ref: `heads/${branch}` });
+                const currentSha = refData.data.object.sha;
+
+                log('Getting current file tree...');
+                const commitData = await octokit.git.getCommit({ owner, repo, commit_sha: currentSha });
+                const treeSha = commitData.data.tree.sha;
+
+                log('Creating orphan commit...');
+                const newCommit = await octokit.git.createCommit({
+                    owner, repo,
+                    message: "Reset history (Automated)",
+                    tree: treeSha,
+                    parents: [] // No parents = Start of history
+                });
+
+                log('Force updating branch reference...');
+                await octokit.git.updateRef({
+                    owner, repo,
+                    ref: `heads/${branch}`,
+                    sha: newCommit.data.sha,
+                    force: true
+                });
+
+                log('History successfully reset to 1 commit!', 'success');
+            } catch (e) {
+                log(`Detailed Error: ${e.message}`, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerText = 'Reset to Initial Commit';
+            }
+        };
+
+        // --- FEATURE: Audit Secrets ---
+        document.getElementById('btn-check-secrets').onclick = async function() {
+            if (!selectedRepo) return;
+            const btn = this;
+            const resultDiv = document.getElementById('secrets-result');
+            
+            btn.disabled = true;
+            btn.innerText = '...';
+
+            try {
+                const owner = selectedRepo.owner.login;
+                const repo = selectedRepo.name;
+                
+                // Check Action Secrets
+                const secrets = await octokit.actions.listRepoSecrets({ owner, repo });
+                // Check Action Variables
+                const vars = await octokit.actions.listRepoVariables({ owner, repo });
+
+                log(`Audit complete: ${secrets.data.total_count} secrets, ${vars.data.total_count} variables.`, 'success');
+                
+                resultDiv.innerHTML = `<span class="text-emerald-400 font-bold">${secrets.data.total_count} Secrets</span> &bull; <span class="text-blue-400 font-bold">${vars.data.total_count} Variables</span>`;
+                resultDiv.classList.remove('hidden');
+
+            } catch (e) {
+                log(`Access Denied: You may not have admin rights for secrets.`, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerText = 'Audit';
+            }
+        };
+
+    </script>
+</body>
+</html>

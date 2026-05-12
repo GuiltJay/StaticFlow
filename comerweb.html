@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>Coomer Resolver</title>
+
+<style>
+html,body{
+  margin:0;
+  height:100%;
+  background:#050508;
+  color:#fff;
+  font-family:system-ui;
+}
+
+#top{
+  position:fixed;
+  top:0;
+  width:100%;
+  height:52px;
+  background:rgba(0,0,0,.55);
+  backdrop-filter:blur(14px);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-weight:600;
+  z-index:10;
+}
+
+#app{
+  padding:70px 12px 20px;
+}
+
+input,button{
+  width:100%;
+  padding:14px;
+  border-radius:14px;
+  border:none;
+  background:#12121a;
+  color:#fff;
+  margin:8px 0;
+  font-size:16px;
+}
+button{
+  background:#00aaff;
+  color:#000;
+  font-weight:700;
+}
+
+.grid{
+  margin-top:14px;
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(120px,1fr));
+  gap:12px;
+}
+
+img{
+  width:100%;
+  border-radius:12px;
+  object-fit:cover;
+}
+#status{
+  opacity:.6;
+  font-size:14px;
+  margin-top:6px;
+}
+</style>
+</head>
+<body>
+
+<div id="top">Coomer Resolver</div>
+
+<div id="app">
+  <input id="url" placeholder="Paste creator or post URL">
+  <button onclick="load()">Resolve</button>
+  <div id="status"></div>
+  <div id="grid" class="grid"></div>
+</div>
+
+<script>
+const API="https://coomer-image-api.onrender.com/resolve"
+
+async function load(){
+  status.innerText="Resolving…"
+  grid.innerHTML=""
+
+  const r = await fetch(API+"?url="+encodeURIComponent(url.value))
+  const j = await r.json()
+
+  status.innerText = j.count + " files"
+
+  j.items.forEach(it=>{
+    const i=document.createElement("img")
+    i.loading="lazy"
+    i.src=it.url
+    grid.appendChild(i)
+  })
+}
+</script>
+
+</body>
+</html>

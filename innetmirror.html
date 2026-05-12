@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>Worker Movie Browser</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; }
+    #searchBtn { margin-left: 8px; }
+    .results img { width: 120px; margin: 8px; cursor: pointer; }
+    .episode-btn { margin: 4px; padding: 6px 10px; cursor: pointer; }
+    #videoArea { margin-top: 20px; }
+  </style>
+</head>
+<body>
+
+  <h1>Movie/TV Browser</h1>
+
+  <input type="text" id="searchInput" placeholder="Search for movies or shows">
+  <button id="searchBtn">Search</button>
+
+  <div id="results"></div>
+
+  <div id="detail"></div>
+
+  <div id="videoArea"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+  <script>
+    const WORKER_BASE = "https://blue-term-c338.mrspidyxd.workers.dev";
+
+    document.getElementById('searchBtn').onclick = searchMovies;
+
+    async function searchMovies() {
+      const q = document.getElementById("searchInput").value.trim();
+      if (!q) return;
+
+      const res = await fetch(`${WORKER_BASE}/search.php?s=${encodeURIComponent(q)}`);
+      const data = await res.json();
+
+      const list = data.searchResult || data; // support both shapes
+      const container = document.getElementById("results");
+      container.innerHTML = "";
+
+      list.forEach(item => {
+        const img = document.createElement("img");
+        img.src = item.poster;
+        img.alt = item.t;
+        img.title = item.t;
+        img.onclick = () => showDetail(item.id);
+        container.appendChild(img);
+      });
+    }
+
+    async function showDetail(id) {
+      const res = await fetch(`${WORKER_BASE}/post.php?id=${id}`);
+      const post = await res.json();
+
+      const title = post.title ?? post.t ?? "";
+
+      const detailDiv = document.getElementById("detail");
+      detailDiv.innerHTML = `<h2>${title}</h2>
+        <p>${post.desc || ""}</p>`;
+
+      const episodes = post.episodes || [];
+      if (episodes.length === 0 || episodes[0] == null) {
+        // movie (single)
+        playVideo(id, title);
+      } else {
+        // show episode list
+        episodes.forEach(ep => {
+          const btn = document.createElement("button");
+          btn.textContent = `${ep.s} ${ep.ep} - ${ep.t}`;
+          btn.className = "episode-btn";
+          btn.onclick = () => playVideo(ep.id, ep.t);
+          detailDiv.appendChild(btn);
+        });
+      }
+    }
+
+    async function playVideo(videoId, label) {
+      const area = document.getElementById("videoArea");
+      area.innerHTML = `<h3>Playing: ${label}</h3><video id="video" controls width="640"></video>`;
+
+      const res = await fetch(`${WORKER_BASE}/tv/playlist.php?id=${videoId}&t=${encodeURIComponent(label)}`);
+      const playlist = await res.json();
+
+      if (!Array.isArray(playlist) || !playlist[0]) {
+        area.append("No streams found");
+        return;
+      }
+
+      // take first source
+      const srcObj = playlist[0].sources?.[0];
+      if (!srcObj) {
+        area.append("No video sources");
+        return;
+      }
+
+      const streamUrl = `${srcObj.file.startsWith("http") ? srcObj.file : WORKER_BASE + srcObj.file}`;
+
+      const video = document.getElementById("video");
+
+      if (Hls.isSupported()) {
+        const hls = new Hls();
+        hls.loadSource(streamUrl);
+        hls.attachMedia(video);
+        hls.on(Hls.Events.MANIFEST_PARSED, () => video.play());
+      } else {
+        video.src = streamUrl;
+      }
+    }
+
+  </script>
+
+</body>
+</html>
