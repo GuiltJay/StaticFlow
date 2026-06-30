@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Link Cleaner</title>
+<style>
+  :root{
+    --bg:#0f1117; --panel:#171a23; --border:#262a36; --text:#e8e9ed;
+    --muted:#8b8fa3; --accent:#6c8cff; --accent2:#42e2b8; --danger:#ff6b6b;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    background:radial-gradient(circle at 20% 0%, #1a1f2e, var(--bg) 60%);
+    color:var(--text); min-height:100vh; padding:32px 16px;
+  }
+  .wrap{max-width:920px; margin:0 auto;}
+  h1{font-size:22px; margin:0 0 4px;}
+  p.sub{color:var(--muted); margin:0 0 24px; font-size:14px;}
+  .grid{display:grid; grid-template-columns:1fr 1fr; gap:16px;}
+  @media (max-width:760px){.grid{grid-template-columns:1fr;}}
+  .panel{
+    background:var(--panel); border:1px solid var(--border); border-radius:14px;
+    padding:16px; display:flex; flex-direction:column;
+  }
+  .panel h2{font-size:13px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); margin:0 0 10px; font-weight:600;}
+  textarea{
+    width:100%; flex:1; min-height:320px; resize:vertical; background:#0c0e14;
+    border:1px solid var(--border); border-radius:10px; color:var(--text);
+    padding:12px; font-size:13.5px; line-height:1.5; font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+  }
+  textarea:focus{outline:none; border-color:var(--accent);}
+  .controls{display:flex; gap:10px; margin:14px 0; flex-wrap:wrap;}
+  button{
+    cursor:pointer; border:none; border-radius:9px; padding:10px 16px;
+    font-size:13.5px; font-weight:600; transition:transform .08s ease, opacity .15s;
+  }
+  button:active{transform:scale(0.97);}
+  .btn-primary{background:var(--accent); color:#0c0e14;}
+  .btn-ghost{background:transparent; color:var(--text); border:1px solid var(--border);}
+  .btn-ghost:hover{border-color:var(--accent);}
+  .btn-copy{background:var(--accent2); color:#0c0e14;}
+  .stat{font-size:12px; color:var(--muted); margin-left:auto; align-self:center;}
+  .toggle-row{display:flex; gap:14px; margin-bottom:14px; flex-wrap:wrap;}
+  label.opt{font-size:12.5px; color:var(--muted); display:flex; align-items:center; gap:6px; cursor:pointer; user-select:none;}
+  input[type=checkbox]{accent-color:var(--accent);}
+  .list{
+    flex:1; min-height:320px; max-height:520px; overflow-y:auto;
+    background:#0c0e14; border:1px solid var(--border); border-radius:10px; padding:6px;
+  }
+  .row{
+    display:flex; align-items:center; gap:8px; padding:8px 10px; border-radius:8px;
+    font-size:13px; word-break:break-all;
+  }
+  .row:hover{background:#161a24;}
+  .row a{color:var(--accent); text-decoration:none; flex:1;}
+  .row a:hover{text-decoration:underline;}
+  .row .idx{color:var(--muted); font-size:11.5px; width:26px; flex-shrink:0; text-align:right;}
+  .copy-mini{
+    background:#1f2330; color:var(--muted); border:1px solid var(--border);
+    border-radius:6px; font-size:11px; padding:4px 8px; flex-shrink:0;
+  }
+  .copy-mini:hover{color:var(--text); border-color:var(--accent);}
+  .empty{color:var(--muted); font-size:13px; padding:20px; text-align:center;}
+  .toast{
+    position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(20px);
+    background:var(--accent2); color:#0c0e14; padding:10px 18px; border-radius:8px;
+    font-size:13.5px; font-weight:600; opacity:0; pointer-events:none; transition:all .25s ease;
+  }
+  .toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Link Cleaner</h1>
+  <p class="sub">Paste your numbered list, get clean copyable links.</p>
+
+  <div class="grid">
+    <div class="panel">
+      <h2>Input</h2>
+      <textarea id="input" placeholder="1. https://example.com/page-one&#10;2. https://example.com/page-two&#10;3. https://example.com/page-three"></textarea>
+      <div class="toggle-row">
+        <label class="opt"><input type="checkbox" id="dedupe" checked> Remove duplicates</label>
+        <label class="opt"><input type="checkbox" id="sortAlpha"> Sort alphabetically</label>
+      </div>
+      <div class="controls">
+        <button class="btn-primary" onclick="processLinks()">Clean Links</button>
+        <button class="btn-ghost" onclick="clearAll()">Clear</button>
+        <span class="stat" id="inStat"></span>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Clean Output</h2>
+      <div class="list" id="list"><div class="empty">No links yet — paste and click Clean Links</div></div>
+      <div class="controls">
+        <button class="btn-copy" onclick="copyAll()">Copy All</button>
+        <button class="btn-ghost" onclick="downloadTxt()">Download .txt</button>
+        <span class="stat" id="outStat"></span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+let cleaned = [];
+
+function extractUrls(text) {
+  // Strip leading numbering like "1.", "12)", "- ", "• " etc, then pull URL from the rest
+  const lines = text.split(/\r?\n/);
+  const urls = [];
+  const urlRegex = /(https?:\/\/[^\s<>"']+)/i;
+
+  lines.forEach(line => {
+    let l = line.trim();
+    if (!l) return;
+    // remove common list prefixes: "1.", "1)", "-", "*", "•"
+    l = l.replace(/^\s*(\d+[\.\)]\s*|[-*•]\s*)/, '');
+    const match = l.match(urlRegex);
+    if (match) {
+      let url = match[1];
+      // trim trailing punctuation that isn't part of URL
+      url = url.replace(/[),.;'"\]]+$/, '');
+      urls.push(url);
+    }
+  });
+  return urls;
+}
+
+function processLinks() {
+  const raw = document.getElementById('input').value;
+  let urls = extractUrls(raw);
+  document.getElementById('inStat').textContent = urls.length + ' found';
+
+  if (document.getElementById('dedupe').checked) {
+    urls = [...new Set(urls)];
+  }
+  if (document.getElementById('sortAlpha').checked) {
+    urls = urls.slice().sort((a,b) => a.localeCompare(b));
+  }
+
+  cleaned = urls;
+  renderList();
+}
+
+function renderList() {
+  const list = document.getElementById('list');
+  const outStat = document.getElementById('outStat');
+  if (cleaned.length === 0) {
+    list.innerHTML = '<div class="empty">No links found. Check your input.</div>';
+    outStat.textContent = '';
+    return;
+  }
+  outStat.textContent = cleaned.length + ' clean link' + (cleaned.length>1?'s':'');
+  list.innerHTML = cleaned.map((u,i) => `
+    <div class="row">
+      <span class="idx">${i+1}</span>
+      <a href="${u}" target="_blank" rel="noopener">${u}</a>
+      <button class="copy-mini" onclick="copyOne(${i})">Copy</button>
+    </div>
+  `).join('');
+}
+
+function copyOne(i) {
+  navigator.clipboard.writeText(cleaned[i]).then(() => showToast('Copied link'));
+}
+
+function copyAll() {
+  if (!cleaned.length) return showToast('Nothing to copy');
+  navigator.clipboard.writeText(cleaned.join('\n')).then(() => showToast('Copied ' + cleaned.length + ' links'));
+}
+
+function downloadTxt() {
+  if (!cleaned.length) return showToast('Nothing to download');
+  const blob = new Blob([cleaned.join('\n')], {type:'text/plain'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'clean-links.txt';
+  a.click();
+}
+
+function clearAll() {
+  document.getElementById('input').value = '';
+  document.getElementById('inStat').textContent = '';
+  cleaned = [];
+  renderList();
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(window._toastTimer);
+  window._toastTimer = setTimeout(() => t.classList.remove('show'), 1600);
+}
+</script>
+</body>
+</html>
