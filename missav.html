@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Surrit yt-dlp Converter</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #111;
+      color: #fff;
+      padding: 20px;
+      max-width: 900px;
+      margin: auto;
+    }
+
+    h1 {
+      text-align: center;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 120px;
+      background: #1e1e1e;
+      color: #00ff99;
+      border: 1px solid #333;
+      padding: 12px;
+      border-radius: 8px;
+      font-size: 14px;
+      resize: vertical;
+    }
+
+    input {
+      width: 100%;
+      padding: 12px;
+      margin-top: 10px;
+      background: #1e1e1e;
+      color: white;
+      border: 1px solid #333;
+      border-radius: 8px;
+      font-size: 14px;
+    }
+
+    button {
+      margin-top: 15px;
+      padding: 12px 20px;
+      border: none;
+      border-radius: 8px;
+      background: #00aa66;
+      color: white;
+      font-size: 16px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: #00cc77;
+    }
+
+    .output {
+      margin-top: 20px;
+    }
+
+    pre {
+      background: #1a1a1a;
+      padding: 15px;
+      border-radius: 8px;
+      overflow-x: auto;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      border: 1px solid #333;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Surrit → yt-dlp Converter</h1>
+
+  <label>Paste Surrit .m3u8 URL:</label>
+  <input id="urlInput" type="text" placeholder="https://surrit.com/.../video.m3u8" />
+
+  <label style="display:block;margin-top:15px;">Referer:</label>
+  <input id="refererInput" type="text" value="https://missav.ws/en" />
+
+  <div class="output">
+    <h3>Generated /ytdl Command</h3>
+    <pre id="output"></pre>
+  </div>
+
+  <button onclick="copyOutput()">Copy Command</button>
+
+  <script>
+    const urlInput = document.getElementById('urlInput');
+    const refererInput = document.getElementById('refererInput');
+    const output = document.getElementById('output');
+
+    function generate() {
+      const url = urlInput.value.trim();
+      const referer = refererInput.value.trim();
+
+      if (!url) {
+        output.textContent = '';
+        return;
+      }
+
+      let origin = '';
+
+      try {
+        origin = new URL(referer).origin;
+      } catch (e) {
+        origin = referer;
+      }
+
+      const cmd = `/yl ${url} -opt {"http_headers":{"Referer":"${referer}","Origin":"${origin}","User-Agent":"Mozilla/5.0"}}`;
+
+      output.textContent = cmd;
+    }
+
+    function copyOutput() {
+      navigator.clipboard.writeText(output.textContent)
+        .then(() => alert('Copied!'));
+    }
+
+    urlInput.addEventListener('input', generate);
+    refererInput.addEventListener('input', generate);
+  </script>
+
+</body>
+</html>
